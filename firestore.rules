@@ -1,0 +1,75 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function authed() { return request.auth != null; }
+
+    match /rooms/{roomId} {
+      allow read: if authed();
+
+      allow create: if authed()
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.status == "lobby";
+
+      allow update, delete: if authed() && resource.data.hostUid == request.auth.uid;
+
+      match /publicPlayers/{playerId} {
+        function isMember() {
+          return authed() && exists(/databases/$(database)/documents/rooms/$(roomId)/publicPlayers/$(request.auth.uid));
+        }
+        function isHost() {
+          return authed() && get(/databases/$(database)/documents/rooms/$(roomId)).data.hostUid == request.auth.uid;
+        }
+
+        allow read: if isMember() || isHost;
+
+        // join/update only in lobby
+        allow create, update: if authed()
+          && playerId == request.auth.uid
+          && get(/databases/$(database)/documents/rooms/$(roomId)).data.status == "lobby";
+
+        allow delete: if authed() && (playerId == request.auth.uid || isHost());
+      }
+
+      match /players/{playerId} {
+        function isHost() {
+          return authed() && get(/databases/$(database)/documents/rooms/$(roomId)).data.hostUid == request.auth.uid;
+        }
+
+        allow read: if authed() && playerId == request.auth.uid;
+
+        // owner can only keep "pending" in lobby (no secrets)
+        allow create, update: if authed()
+          && playerId == request.auth.uid
+          && get(/databases/$(database)/documents/rooms/$(roomId)).data.status == "lobby"
+          && request.resource.data.role == "pending"
+          && request.resource.data.word == ""
+          && request.resource.data.categoryLabel == "";
+
+        // host distributes roles/word
+        allow update: if isHost();
+
+        allow delete: if authed() && (playerId == request.auth.uid || isHost());
+      }
+
+      match /private/{docId} {
+        allow read, write: if authed()
+          && get(/databases/$(database)/documents/rooms/$(roomId)).data.hostUid == request.auth.uid;
+      }
+
+      match /results/{docId} {
+        function isMember() {
+          return authed() && exists(/databases/$(database)/documents/rooms/$(roomId)/publicPlayers/$(request.auth.uid));
+        }
+        function isHost() {
+          return authed() && get(/databases/$(database)/documents/rooms/$(roomId)).data.hostUid == request.auth.uid;
+        }
+
+        allow read: if isMember()
+          && get(/databases/$(database)/documents/rooms/$(roomId)).data.status == "ended";
+
+        allow create, update, delete: if isHost();
+      }
+    }
+  }
+}

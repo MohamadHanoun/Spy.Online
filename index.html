@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1220" />
+  <title>لعبة الجاسوس | Multiplayer</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">🕵️‍♂️</div>
+      <div class="titles">
+        <div class="title">لعبة الجاسوس</div>
+        <div class="subtitle">  قول شكرا لجهودي الجبارة لاني اتنازلت وعملتلك اللعبة </div>
+      </div>
+    </div>
+    <button id="btnLeave" class="btn btn-ghost" type="button">مغادرة</button>
+  </header>
+
+  <main class="container">
+    <!-- HOME -->
+    <section id="screenHome" class="screen">
+  <div class="card hero homeHero">
+    <div class="heroGlow"></div>
+
+    <div class="homeHeader">
+      <h1>ابدأ مع رفقاتك</h1>
+      <p class="hint">
+        اعمل غرفة، خذ الكود وابعتو لرفقاتك. كل واحد بيفتح الرابط وبيشوف بطاقته لحاله.
+      </p>
+    </div>
+
+    <div class="homeLayout">
+      <!-- العمود الأول: معلومات سريعة + الانضمام -->
+      <div class="homeMainBlock">
+        <div class="card muted inner homePanel">
+          <h2>تسجيل الدخول </h2>
+
+          <div class="field">
+            <label class="label" for="nameInput">اسمك</label>
+            <input
+              id="nameInput"
+              class="input"
+              type="text"
+              autocomplete="nickname"
+              placeholder="مثال: ابو عدي"
+            />
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="field">
+            <label class="label" for="roomCodeInput">انضمام لغرفة</label>
+            <input
+              id="roomCodeInput"
+              class="input"
+              type="text"
+              placeholder="CODE"
+            />
+            <div class="actions homeActions">
+              <button id="btnJoinRoom" class="btn btn-secondary" type="button">
+                انضمام
+              </button>
+            </div>
+            <div class="hint">اكتب الكود إذا عندك غرفة جاهزة.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- العمود الثاني: إعدادات الإنشاء -->
+      <div class="homeSettingsBlock">
+        <div class="card muted inner homePanel settingsPanel">
+          <div class="row spread homePanelTop">
+            <h2 class="m0">إعدادات الغرفة (للهوست)</h2>
+            <span class="pill">Auto Save كرمال ريحك </span>
+          </div>
+
+          <div class="grid">
+            <div class="field span2">
+              <label class="label">الفئات</label>
+              <div id="homeCategoryList" class="chips" role="group" aria-label="الفئات"></div>
+              <div class="hint">اختَر فئة أو أكثر.</div>
+            </div>
+
+            <div class="field">
+              <label class="label" for="homeTargetPlayers">عدد اللاعبين المطلوب</label>
+              <input
+                id="homeTargetPlayers"
+                class="input"
+                type="number"
+                inputmode="numeric"
+                min="0"
+                placeholder="مثال: 6 (0 = تجاهل)"
+              />
+              <div class="hint">إذا حطّيت رقم، لازم يطابق عدد الموجودين وقت Start.</div>
+            </div>
+
+            <div class="field">
+              <label class="label" for="homeSpiesCount">عدد الجواسيس</label>
+              <input
+                id="homeSpiesCount"
+                class="input"
+                type="number"
+                inputmode="numeric"
+                min="0"
+                placeholder="مثال: 2"
+              />
+              <div class="hint">لازم يكون أقل من عدد اللاعبين وقت Start.</div>
+            </div>
+
+            <div class="field span2">
+              <label class="label" for="homeRoundMinutes">الوقت بالدقائق (اختياري)</label>
+              <input
+                id="homeRoundMinutes"
+                class="input"
+                type="number"
+                inputmode="numeric"
+                min="0"
+                placeholder="مثال: 8 (0 = بدون مؤقّت)"
+              />
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="createRoomBox">
+            <div class="createRoomText">
+              <div class="createRoomTitle">إنشاء غرفة جديدة</div>
+              <div class="hint">بعد الإنشاء تأخذ الكود وتشاركه مع اللاعبين.</div>
+            </div>
+
+            <button id="btnCreateRoom" class="btn btn-primary createRoomBtn" type="button">
+              إنشاء الغرفة
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="homeError" class="error" role="alert" aria-live="polite"></div>
+  </div>
+</section>
+
+    <!-- LOBBY -->
+    <section id="screenLobby" class="screen hidden">
+      <div class="card">
+        <div class="row spread">
+          <div>
+            <h1 class="m0">الغرفة</h1>
+            <div class="hint">شارك الكود مع اصدقائك</div>
+          </div>
+
+          <div class="codeCard">
+            <div class="codeLabel">CODE</div>
+            <div id="roomCodeView" class="codeValue">—</div>
+            <button id="btnCopyCode" class="btn btn-ghost" type="button">نسخ</button>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="grid">
+          <div class="field">
+            <label class="label">المشاركين</label>
+            <div id="playersList" class="listBox">—</div>
+            <div class="hint">لازم 2+ لتبدأ الجولة.</div>
+          </div>
+
+          <div class="field">
+            <label class="label">إعدادات الغرفة</label>
+
+            <div class="statusCard">
+              <div class="statusRow">
+                <div class="pill">Status</div>
+                <div id="statusPill" class="pill">—</div>
+              </div>
+
+              <div class="statusMain">
+                <div id="statusTitle" class="statusTitle">—</div>
+                <div id="statusHint" class="statusHint">—</div>
+              </div>
+
+              <div class="divider"></div>
+
+              <div class="grid">
+                <div class="field span2">
+                  <label class="label">الفئات</label>
+                  <div id="lobbyCategoryList" class="chips" role="group" aria-label="الفئات"></div>
+                  <div class="hint">غيرها قبل Start. بعد Start بتنقفل للجولة الحالية.</div>
+                </div>
+
+                <div class="field">
+                  <label class="label" for="lobbyTargetPlayers">عدد اللاعبين المطلوب</label>
+                  <input id="lobbyTargetPlayers" class="input" type="number" inputmode="numeric" min="0" placeholder="0 = تجاهل" />
+                </div>
+
+                <div class="field">
+                  <label class="label" for="lobbySpiesCount">عدد الجواسيس</label>
+                  <input id="lobbySpiesCount" class="input" type="number" inputmode="numeric" min="0" />
+                </div>
+
+                <div class="field">
+                  <label class="label" for="lobbyRoundMinutes">الوقت بالدقائق (اختياري)</label>
+                  <input id="lobbyRoundMinutes" class="input" type="number" inputmode="numeric" min="0" />
+                </div>
+              </div>
+
+              <div class="row spread" style="margin-top:10px">
+                <div class="pill" id="metaInfo">—</div>
+                <div class="pill" id="saveState">—</div>
+              </div>
+
+              <div id="hostBox" class="actions hidden">
+                <button id="btnStart" class="btn btn-primary" type="button">ابدأ الجولة</button>
+              </div>
+
+              <div id="lobbyError" class="error" role="alert" aria-live="polite"></div>
+            </div>
+
+            <div class="hint">ملاحظة: الهوست لحاله يقدر يعدّل الإعدادات ويبدأ/ينهي.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CARD -->
+    <section id="screenCard" class="screen hidden" aria-live="polite">
+      <div class="card">
+        <h1>بطاقتك</h1>
+
+        <div id="cardCover" class="cover">
+          <div class="coverTitle">اضغط لتظهر البطاقة</div>
+          <div class="coverHint">للسرّية إذا في حدا جنبك.</div>
+          <button id="btnRevealCard" class="btn btn-primary" type="button">إظهار</button>
+        </div>
+
+        <div id="cardBox" class="revealBox hidden"></div>
+
+        <div class="actions">
+          <button id="btnGoPlay" class="btn btn-secondary" type="button" disabled>اذهب للجولة</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- PLAY -->
+    <section id="screenPlay" class="screen hidden">
+      <div class="card">
+        <h1>الجولة شغّالة</h1>
+        <p class="hint">ابدأوا الأسئلة… الجاسوس يحاول يلقط الكلمة بدون ما ينكشف.</p>
+
+        <div class="card muted inner">
+          <div class="row spread">
+            <div class="pill">أول سؤال عشوائي</div>
+            <div class="pill">مرة واحدة فقط</div>
+          </div>
+          <div id="firstQuestion" class="firstQuestion">—</div>
+        </div>
+
+        <div class="timerBox">
+          <div class="timerLabel">المؤقّت</div>
+          <div id="timerValue" class="timerValue">—</div>
+          <div class="hint">مزامنة تقريبية حسب وقت بدء الجولة (سيرفر).</div>
+        </div>
+
+        <div id="hostEndBox" class="actions hidden">
+          <button id="btnEnd" class="btn btn-danger" type="button">إنهاء الجولة</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- END -->
+    <section id="screenEnd" class="screen hidden">
+      <div class="card">
+        <h1>انتهت الجولة</h1>
+        <div class="endBox">
+          <div class="big">النتيجة</div>
+          <pre id="resultsBox" class="results">—</pre>
+        </div>
+
+        <div id="hostNewRoundBox" class="actions hidden">
+          <button id="btnNewRound" class="btn btn-primary" type="button">جولة جديدة</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div>© لعبة الجاسوس — Multiplayer حقوق النشر محفوظة في الثلاجة</div>
+  </footer>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
