@@ -152,21 +152,20 @@ export async function hostEndGame(code) {
   await updateDoc(refs.room(code), { status: RoomStatus.ENDED });
 }
 
-export async function hostNewRound(code) {
+export async function hostNewRound(code, playerUids = []) {
   const batch = writeBatch(db);
 
   batch.delete(refs.results(code));
   batch.delete(refs.hostSecret(code));
 
-  const pubSnap = await getDocs(collection(db, "rooms", code, "publicPlayers"));
-  pubSnap.forEach((d) => {
-    batch.update(refs.privPlayer(code, d.id), {
+  for (const uid of playerUids) {
+    batch.set(refs.privPlayer(code, uid), {
       role: "pending",
       word: "",
       categoryLabel: "",
       updatedAt: serverTimestamp(),
-    });
-  });
+    }, { merge: true });
+  }
 
   batch.update(refs.room(code), {
     status: RoomStatus.LOBBY,

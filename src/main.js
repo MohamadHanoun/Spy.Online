@@ -486,7 +486,7 @@ async function endRound() {
 
 async function newRound() {
   if (!isHost || !code) return;
-  await hostNewRound(code);
+  await hostNewRound(code, players.map((p) => p.uid));
   showScreen("lobby");
 }
 
