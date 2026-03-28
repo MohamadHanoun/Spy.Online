@@ -462,3 +462,128 @@ h2{ font-size: 16px; }
     font-size: 17px;
   }
 }
+.toggleRow{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-weight:900;
+  cursor:pointer;
+}
+
+.toggleRow input{
+  width:18px;
+  height:18px;
+}
+
+.playersBoard,
+#playersList.listBox{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  white-space:normal;
+}
+
+.playerRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px;
+  border-radius:16px;
+  border:1px solid rgba(34,49,85,.75);
+  background: rgba(14,22,40,.55);
+}
+
+.playerRow.boardRow.is-revealed{
+  border-color: rgba(255,77,94,.55);
+  background: rgba(60,16,24,.28);
+}
+
+.playerInfo{
+  min-width:0;
+}
+
+.playerInfo.grow{
+  flex:1;
+}
+
+.playerNameLine{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+}
+
+.playerName{
+  font-size:16px;
+  font-weight:1000;
+}
+
+.playerSub{
+  margin-top:6px;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.7;
+}
+
+.playerActionsInline{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.playerBadge{
+  padding:5px 9px;
+  border-radius:999px;
+  border:1px solid rgba(34,49,85,.8);
+  background: rgba(18,30,58,.55);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.playerBadge.self{
+  color:var(--text);
+  border-color: rgba(90,168,255,.6);
+}
+
+.playerBadge.spyX{
+  background: rgba(255,77,94,.22);
+  border-color: rgba(255,77,94,.75);
+  color: #ffd8dd;
+}
+
+.btn-small{
+  padding: 9px 12px;
+  border-radius: 14px;
+  font-size: 13px;
+  min-width: auto;
+  flex: 0 0 auto !important;
+}
+
+.voteBanner{
+  margin: 12px 0;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(34,49,85,.75);
+  background: rgba(18,30,58,.45);
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.8;
+}
+
+.voteBanner[data-type="success"]{
+  background: rgba(40,120,72,.24);
+  border-color: rgba(76,175,120,.45);
+}
+
+.voteBanner[data-type="danger"]{
+  background: rgba(128,28,45,.26);
+  border-color: rgba(255,77,94,.5);
+}
+
+.voteBanner[data-type="info"]{
+  background: rgba(27,73,148,.22);
+  border-color: rgba(90,168,255,.45);
+}

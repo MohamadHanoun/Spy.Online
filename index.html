@@ -121,6 +121,14 @@
                 placeholder="مثال: 8 (0 = بدون مؤقّت)"
               />
             </div>
+
+            <div class="field span2">
+              <label class="toggleRow" for="homeSpyTeammatesVisible">
+                <input id="homeSpyTeammatesVisible" type="checkbox" />
+                <span>الجواسيس يعرفون بعض</span>
+              </label>
+              <div class="hint">إذا كان عدد الجواسيس أكثر من 1، كل جاسوس يرى أسماء الجواسيس الآخرين في بطاقته.</div>
+            </div>
           </div>
 
           <div class="divider"></div>
@@ -205,6 +213,14 @@
                   <label class="label" for="lobbyRoundMinutes">الوقت بالدقائق (اختياري)</label>
                   <input id="lobbyRoundMinutes" class="input" type="number" inputmode="numeric" min="0" />
                 </div>
+
+                <div class="field span2">
+                  <label class="toggleRow" for="lobbySpyTeammatesVisible">
+                    <input id="lobbySpyTeammatesVisible" type="checkbox" />
+                    <span>الجواسيس يعرفون بعض</span>
+                  </label>
+                  <div class="hint">يتفعّل للجولة القادمة فقط، ولا يظهر للهوست من هم الجواسيس على الواجهة.</div>
+                </div>
               </div>
 
               <div class="row spread" style="margin-top:10px">
@@ -262,6 +278,16 @@
       <div class="timerLabel">المؤقّت</div>
       <div id="timerValue" class="timerValue">—</div>
       <div class="hint">   تيك تااااااك تيك تااااااك  تيك تااااااك تيك تااااااك  </div>
+    </div>
+
+    <div class="card muted inner">
+      <div class="row spread">
+        <div class="pill">اللاعبون والتصويت</div>
+        <div id="voteSummaryPill" class="pill">—</div>
+      </div>
+      <div id="voteBanner" class="voteBanner hidden">—</div>
+      <div id="playError" class="error" role="alert" aria-live="polite"></div>
+      <div id="playPlayersList" class="listBox playersBoard">—</div>
     </div>
 
     <div class="actions">
