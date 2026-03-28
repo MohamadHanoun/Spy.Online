@@ -158,9 +158,9 @@ export async function hostNewRound(code) {
   batch.delete(refs.results(code));
   batch.delete(refs.hostSecret(code));
 
-  const privSnap = await getDocs(collection(db, "rooms", code, "players"));
-  privSnap.forEach((d) => {
-    batch.update(d.ref, {
+  const pubSnap = await getDocs(collection(db, "rooms", code, "publicPlayers"));
+  pubSnap.forEach((d) => {
+    batch.update(refs.privPlayer(code, d.id), {
       role: "pending",
       word: "",
       categoryLabel: "",
