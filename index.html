@@ -246,29 +246,35 @@
 
     <!-- PLAY -->
     <section id="screenPlay" class="screen hidden">
-      <div class="card">
-        <h1>الجولة شغّالة</h1>
-        <p class="hint">ابدأوا الأسئلة… الجاسوس يحاول يلقط الكلمة بدون ما ينكشف.</p>
+  <div class="card">
+    <h1>الجولة شغّالة</h1>
+    <p class="hint">ابدأوا الأسئلة… الجاسوس يحاول يلقط الكلمة بدون ما ينكشف.</p>
 
-        <div class="card muted inner">
-          <div class="row spread">
-            <div class="pill">أول سؤال عشوائي</div>
-            <div class="pill">مرة واحدة فقط</div>
-          </div>
-          <div id="firstQuestion" class="firstQuestion">—</div>
-        </div>
-
-        <div class="timerBox">
-          <div class="timerLabel">المؤقّت</div>
-          <div id="timerValue" class="timerValue">—</div>
-          <div class="hint">مزامنة تقريبية حسب وقت بدء الجولة (سيرفر).</div>
-        </div>
-
-        <div id="hostEndBox" class="actions hidden">
-          <button id="btnEnd" class="btn btn-danger" type="button">إنهاء الجولة</button>
-        </div>
+    <div class="card muted inner">
+      <div class="row spread">
+        <div class="pill">أول سؤال عشوائي</div>
+        <div class="pill">مرة واحدة فقط</div>
       </div>
-    </section>
+      <div id="firstQuestion" class="firstQuestion">—</div>
+    </div>
+
+    <div class="timerBox">
+      <div class="timerLabel">المؤقّت</div>
+      <div id="timerValue" class="timerValue">—</div>
+      <div class="hint">مزامنة تقريبية حسب وقت بدء الجولة (سيرفر).</div>
+    </div>
+
+    <div class="actions">
+      <button id="btnTogglePlayCard" class="btn btn-secondary" type="button">إظهار بطاقتي</button>
+    </div>
+
+    <div id="playCardBox" class="revealBox hidden"></div>
+
+    <div id="hostEndBox" class="actions hidden">
+      <button id="btnEnd" class="btn btn-danger" type="button">إنهاء الجولة</button>
+    </div>
+  </div>
+</section>
 
     <!-- END -->
     <section id="screenEnd" class="screen hidden">

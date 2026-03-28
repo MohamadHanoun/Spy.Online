@@ -57,6 +57,8 @@ const el = {
   timerValue: $("#timerValue"),
   hostEndBox: $("#hostEndBox"),
   btnEnd: $("#btnEnd"),
+  btnTogglePlayCard: $("#btnTogglePlayCard"),
+  playCardBox: $("#playCardBox"),
 
   // end
   resultsBox: $("#resultsBox"),
@@ -71,7 +73,10 @@ let isHost = false;
 let players = [];
 let uidToName = new Map();
 
-let unsub = { room:null, players:null, my:null, results:null };
+let myPrivateData = null;
+let playCardVisible = false;
+
+let unsub = { room: null, players: null, my: null, results: null };
 let timerId = null;
 
 boot();
@@ -82,7 +87,6 @@ async function boot() {
   const last = loadLast();
   if (last?.code) el.roomCodeInput.value = last.code;
 
-  // Init home defaults UI
   initHomeDefaultsUI();
 
   await ensureAnonAuth();
@@ -90,9 +94,11 @@ async function boot() {
 
   wire();
 
-  // auto rejoin
   if (last?.code && last?.name) {
-    try { await joinFlow(last.code, last.name, true); return; } catch {}
+    try {
+      await joinFlow(last.code, last.name, true);
+      return;
+    } catch {}
   }
 
   showScreen("home");
@@ -136,12 +142,22 @@ function wire() {
     el.cardBox.classList.remove("hidden");
   });
 
-  el.btnGoPlay.addEventListener("click", () => showScreen("play"));
+  el.btnGoPlay.addEventListener("click", () => {
+    showScreen("play");
+    renderPlayCard();
+  });
+
+  if (el.btnTogglePlayCard) {
+    el.btnTogglePlayCard.addEventListener("click", () => {
+      playCardVisible = !playCardVisible;
+      renderPlayCard();
+    });
+  }
 }
 
 function initHomeDefaultsUI() {
   const def = normalizeSettings(loadHostDefaults() || {
-    categories: ["places","foods","animals","objects","countries"],
+    categories: ["places", "foods", "animals", "objects", "countries"],
     targetPlayers: 0,
     spiesCount: 1,
     roundMinutes: 8,
@@ -238,11 +254,9 @@ async function joinFlow(roomCode, name, isAutoRejoin) {
     throw new Error("Room not found");
   }
 
-  // If lobby => normal join/upsert
   if (r.status === RoomStatus.LOBBY) {
     await upsertJoin(roomCode, uid, name);
   } else {
-    // playing/ended: allow only if already member (refresh case)
     const me = await getMyPublicPlayer(roomCode, uid);
     if (!me) {
       setText(el.homeError, "الجولة شغّالة/منتهية. ما في انضمام جديد حالياً.");
@@ -260,6 +274,7 @@ async function joinFlow(roomCode, name, isAutoRejoin) {
 async function leaveFlow() {
   stopSubs();
   stopTimer();
+
   if (code && uid) await leaveRoom(code, uid);
 
   code = null;
@@ -267,6 +282,8 @@ async function leaveFlow() {
   isHost = false;
   players = [];
   uidToName = new Map();
+  myPrivateData = null;
+  playCardVisible = false;
 
   clearLast();
 }
@@ -294,7 +311,8 @@ function startSubs(roomCode) {
   });
 
   unsub.my = subMyPrivate(roomCode, uid, (me) => {
-    // privacy
+    myPrivateData = me;
+
     el.cardCover.classList.remove("hidden");
     el.cardBox.classList.add("hidden");
 
@@ -302,10 +320,11 @@ function startSubs(roomCode) {
     setHtml(el.cardBox, html);
     el.btnGoPlay.disabled = !canPlay;
 
+    renderPlayCard();
+
     if (room?.status === RoomStatus.PLAYING) showScreen("card");
   });
 
-  // IMPORTANT: results subscription ONLY when ENDED (avoid permission-denied)
   unsub.results = null;
 
   wireLobbySettingsWrites();
@@ -313,7 +332,7 @@ function startSubs(roomCode) {
 
 function stopSubs() {
   Object.values(unsub).forEach((u) => { try { u?.(); } catch {} });
-  unsub = { room:null, players:null, my:null, results:null };
+  unsub = { room: null, players: null, my: null, results: null };
 }
 
 function ensureResultsSub() {
@@ -372,6 +391,8 @@ function route() {
   if (room.status === RoomStatus.LOBBY) {
     stopResultsSub();
     stopTimer();
+    playCardVisible = false;
+    renderPlayCard();
     showScreen("lobby");
     return;
   }
@@ -380,18 +401,20 @@ function route() {
     stopResultsSub();
     renderFirstQuestion(room.firstQuestion);
     startTimer(room.startedAt, room.roundMinutes ?? normalizeSettings(room.settings || {}).roundMinutes);
+    renderPlayCard();
     return;
   }
 
   if (room.status === RoomStatus.ENDED) {
     ensureResultsSub();
     stopTimer();
+    playCardVisible = false;
+    renderPlayCard();
     showScreen("end");
   }
 }
 
 function wireLobbySettingsWrites() {
-  // ensure chips exist
   renderCategoryChips(el.lobbyCategoryList, getCheckedCategories(el.homeCategoryList), () => {});
 
   const saveToRoomDebounced = debounce(async () => {
@@ -413,11 +436,9 @@ function wireLobbySettingsWrites() {
     await updateRoomSettings(code, settings);
   }, 400);
 
-  // Remove old listeners by replacing nodes? (simple: add once with guard)
   if (el.lobbyCategoryList.dataset.bound === "1") return;
   el.lobbyCategoryList.dataset.bound = "1";
 
-  // category changes
   el.lobbyCategoryList.addEventListener("change", () => saveToRoomDebounced());
   el.lobbyTargetPlayers.addEventListener("input", () => saveToRoomDebounced());
   el.lobbySpiesCount.addEventListener("input", () => saveToRoomDebounced());
@@ -428,15 +449,16 @@ function hydrateLobbySettingsFromRoom() {
   if (!room) return;
 
   const s = normalizeSettings(room.settings || loadHostDefaults() || {});
-  // if lobby chips not rendered yet
   renderCategoryChips(el.lobbyCategoryList, s.categories, () => {});
-  // disable for non-host or non-lobby
+
   const editable = isHost && room.status === RoomStatus.LOBBY;
   el.lobbyTargetPlayers.disabled = !editable;
   el.lobbySpiesCount.disabled = !editable;
   el.lobbyRoundMinutes.disabled = !editable;
 
-  Array.from(el.lobbyCategoryList.querySelectorAll("input[type=checkbox]")).forEach((x) => { x.disabled = !editable; });
+  Array.from(el.lobbyCategoryList.querySelectorAll("input[type=checkbox]")).forEach((x) => {
+    x.disabled = !editable;
+  });
 
   el.lobbyTargetPlayers.value = String(s.targetPlayers ?? 0);
   el.lobbySpiesCount.value = String(s.spiesCount ?? 0);
@@ -492,15 +514,24 @@ async function newRound() {
 
 function renderCard(me) {
   if (!me || room?.status !== RoomStatus.PLAYING) {
-    return { html: `<div class="big">استنّى…</div><div class="small">ما بلشت الجولة بعد</div>`, canPlay:false };
+    return {
+      html: `<div class="big">استنّى…</div><div class="small">ما بلشت الجولة بعد</div>`,
+      canPlay: false
+    };
   }
 
   if (me.role === "pending") {
-    return { html: `<div class="big">عم نجهّز الدور…</div><div class="small">استنّى شوي</div>`, canPlay:false };
+    return {
+      html: `<div class="big">عم نجهّز الدور…</div><div class="small">استنّى شوي</div>`,
+      canPlay: false
+    };
   }
 
   if (me.role === "spy") {
-    return { html: `<div class="big">أنت الجاسوس 🕵️</div><div class="small">حاول تعرف الكلمة بدون ما تنكشف.</div>`, canPlay:true };
+    return {
+      html: `<div class="big">أنت الجاسوس 🕵️</div><div class="small">حاول تعرف الكلمة بدون ما تنكشف.</div>`,
+      canPlay: true
+    };
   }
 
   if (me.role === "civilian") {
@@ -508,11 +539,40 @@ function renderCard(me) {
       html:
         `<div class="big">الكلمة: ${escapeHtml(me.word || "")}</div>` +
         `<div class="small">التصنيف: ${escapeHtml(me.categoryLabel || "")}</div>`,
-      canPlay:true
+      canPlay: true
     };
   }
 
-  return { html: `<div class="big">خطأ</div><div class="small">دور غير معروف</div>`, canPlay:false };
+  return {
+    html: `<div class="big">خطأ</div><div class="small">دور غير معروف</div>`,
+    canPlay: false
+  };
+}
+
+function renderPlayCard() {
+  if (!el.playCardBox || !el.btnTogglePlayCard) return;
+
+  const canShow =
+    room?.status === RoomStatus.PLAYING &&
+    myPrivateData &&
+    myPrivateData.role &&
+    myPrivateData.role !== "pending";
+
+  if (!canShow) {
+    playCardVisible = false;
+    el.playCardBox.classList.add("hidden");
+    el.btnTogglePlayCard.disabled = true;
+    setText(el.btnTogglePlayCard, "إظهار بطاقتي");
+    return;
+  }
+
+  el.btnTogglePlayCard.disabled = false;
+
+  const { html } = renderCard(myPrivateData);
+  setHtml(el.playCardBox, html);
+
+  el.playCardBox.classList.toggle("hidden", !playCardVisible);
+  setText(el.btnTogglePlayCard, playCardVisible ? "إخفاء بطاقتي" : "إظهار بطاقتي");
 }
 
 function renderFirstQuestion(fq) {

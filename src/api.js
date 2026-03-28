@@ -1,12 +1,24 @@
 import {
-  doc, getDoc, setDoc, updateDoc, deleteDoc,
-  collection, getDocs, onSnapshot, query, orderBy,
-  serverTimestamp, writeBatch
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  collection,
+  onSnapshot,
+  query,
+  orderBy,
+  serverTimestamp,
+  writeBatch
 } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
 import { db } from "./firebase.js";
 
-export const RoomStatus = { LOBBY:"lobby", PLAYING:"playing", ENDED:"ended" };
+export const RoomStatus = {
+  LOBBY: "lobby",
+  PLAYING: "playing",
+  ENDED: "ended",
+};
 
 export const refs = {
   room: (code) => doc(db, "rooms", code),
@@ -45,19 +57,27 @@ export async function updateRoomSettings(code, settings) {
 }
 
 export async function upsertJoin(code, uid, name) {
-  await setDoc(refs.pubPlayer(code, uid), {
-    name,
-    joinedAtMs: Date.now(),
-    joinedAt: serverTimestamp(),
-  }, { merge: true });
+  await setDoc(
+    refs.pubPlayer(code, uid),
+    {
+      name,
+      joinedAtMs: Date.now(),
+      joinedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
 
-  await setDoc(refs.privPlayer(code, uid), {
-    name,
-    role: "pending",
-    word: "",
-    categoryLabel: "",
-    updatedAt: serverTimestamp(),
-  }, { merge: true });
+  await setDoc(
+    refs.privPlayer(code, uid),
+    {
+      name,
+      role: "pending",
+      word: "",
+      categoryLabel: "",
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
 }
 
 export async function leaveRoom(code, uid) {
@@ -68,7 +88,9 @@ export async function leaveRoom(code, uid) {
 }
 
 export function subRoom(code, cb) {
-  return onSnapshot(refs.room(code), (s) => cb(s.exists() ? s.data() : null));
+  return onSnapshot(refs.room(code), (s) => {
+    cb(s.exists() ? s.data() : null);
+  });
 }
 
 export function subPublicPlayers(code, cb) {
@@ -76,14 +98,18 @@ export function subPublicPlayers(code, cb) {
     query(collection(db, "rooms", code, "publicPlayers"), orderBy("joinedAtMs", "asc")),
     (snap) => {
       const list = [];
-      snap.forEach((d) => list.push({ uid: d.id, ...(d.data() || {}) }));
+      snap.forEach((d) => {
+        list.push({ uid: d.id, ...(d.data() || {}) });
+      });
       cb(list);
     }
   );
 }
 
 export function subMyPrivate(code, uid, cb) {
-  return onSnapshot(refs.privPlayer(code, uid), (s) => cb(s.exists() ? s.data() : null));
+  return onSnapshot(refs.privPlayer(code, uid), (s) => {
+    cb(s.exists() ? s.data() : null);
+  });
 }
 
 export function subResults(code, cb) {
@@ -103,11 +129,12 @@ export async function hostStartGame({
   categoryLabel,
   spiesUids,
   firstQuestion,
-  players
+  players,
 }) {
   const batch = writeBatch(db);
 
   batch.delete(refs.results(code));
+
   batch.set(refs.hostSecret(code), {
     word,
     categoryLabel,
@@ -126,6 +153,7 @@ export async function hostStartGame({
 
   for (const p of players) {
     const isSpy = spiesUids.includes(p.uid);
+
     batch.update(refs.privPlayer(code, p.uid), {
       role: isSpy ? "spy" : "civilian",
       word: isSpy ? "" : word,
@@ -139,7 +167,10 @@ export async function hostStartGame({
 
 export async function hostEndGame(code) {
   const sec = await getDoc(refs.hostSecret(code));
-  if (!sec.exists()) throw new Error("Missing host secret");
+  if (!sec.exists()) {
+    throw new Error("Missing host secret");
+  }
+
   const h = sec.data();
 
   await setDoc(refs.results(code), {
@@ -149,7 +180,9 @@ export async function hostEndGame(code) {
     endedAt: serverTimestamp(),
   });
 
-  await updateDoc(refs.room(code), { status: RoomStatus.ENDED });
+  await updateDoc(refs.room(code), {
+    status: RoomStatus.ENDED,
+  });
 }
 
 export async function hostNewRound(code, playerUids = []) {
@@ -158,13 +191,13 @@ export async function hostNewRound(code, playerUids = []) {
   batch.delete(refs.results(code));
   batch.delete(refs.hostSecret(code));
 
-  for (const uid of playerUids) {
-    batch.set(refs.privPlayer(code, uid), {
+  for (const uid of [...new Set(playerUids)]) {
+    batch.update(refs.privPlayer(code, uid), {
       role: "pending",
       word: "",
       categoryLabel: "",
       updatedAt: serverTimestamp(),
-    }, { merge: true });
+    });
   }
 
   batch.update(refs.room(code), {
