@@ -56,8 +56,8 @@ service cloud.firestore {
       }
 
       match /results/{docId} {
-        allow read: if isMember() && roomDoc().data.status == "ended";
-        allow create, update, delete: if isHost();
+        allow read: if (isMember() || isHost()) && roomDoc().data.status == "ended";
+       allow create, update, delete: if isHost();
       }
 
       match /votes/{voteId} {

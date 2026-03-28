@@ -137,11 +137,15 @@ export function subMyPrivate(code, uid, cb, onError) {
   );
 }
 
-export function subResults(code, cb) {
+export function subResults(code, cb, onError) {
   return onSnapshot(
     refs.results(code),
     (s) => cb(s.exists() ? s.data() : null),
-    () => cb(null)
+    (err) => {
+      console.error("subResults error:", err);
+      onError?.(err);
+      cb(null);
+    }
   );
 }
 
@@ -355,15 +359,15 @@ export async function hostResolveVoteTarget(code, targetUid, playerUids = [], vo
       activeSpyCount: nextActiveSpyCount,
       voteStopped: isLastSpy,
       voteMessage: isLastSpy
-        ? `تم كشف آخر جاسوس: ${targetName}. المدنيون فازوا، والهوست يعرض النتائج يدويًا.`
-        : `تم كشف جاسوس: ${targetName}. أكملوا التصويت على الجاسوس المتبقي.`,
+        ? `تم كشف آخر جاسوس: ${targetName}انتهت الجولة فاز اللاعبون`
+        : `تم كشف جاسوس: ${targetName}.اكملو اللعبة لكشف الجاسوس الأخر`,
       voteMessageType: isLastSpy ? "success" : "info",
       roundWinner: isLastSpy ? "civilians" : "",
     });
   } else {
     batch.update(refs.room(code), {
       voteStopped: true,
-      voteMessage: `اللاعب ${targetName} ليس جاسوسًا. توقّف التصويت، والهوست ينهي الجولة يدويًا.`,
+      voteMessage: `اللاعب ${targetName} ليس جاسوسًا. انتهت الجولة`,
       voteMessageType: "danger",
       roundWinner: "spies",
     });
