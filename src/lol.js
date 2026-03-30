@@ -4,31 +4,80 @@ export const LOL_MODE_LABEL = "League of Legends";
 export const GAME_MODES = [
   {
     key: "classic",
-    label: "Classic Mod ",
+    label: "Classic Mod",
     description: "الكلمات والفئات العادية الموجودة أصلًا في لعبتك.",
   },
   {
     key: LOL_MODE_KEY,
     label: "League of Legends",
-    description: "جولة مبنية على صورة سكن. اللاعب العادي يرى الصورة مع اسم الشخصية واسم السكن، والأمبوستر يرى نفس الصورة مع Zoom + Blur.",
+    description:
+      "جولة مبنية على صورة سكن. اللاعب العادي يرى الصورة مع اسم الشخصية واسم السكن، والأمبوستر يرى نفس الصورة مع Zoom + Blur.",
   },
-];
-
-const SAFE_ZONES = [
-  { key: "top_left", label: "أعلى يسار", tx: 18, ty: 14 },
-  { key: "top_right", label: "أعلى يمين", tx: -18, ty: 14 },
-  { key: "bottom_left", label: "أسفل يسار", tx: 18, ty: -14 },
-  { key: "bottom_right", label: "أسفل يمين", tx: -18, ty: -14 },
-  { key: "right_middle", label: "يمين الوسط", tx: -20, ty: -2 },
-  { key: "left_middle", label: "يسار الوسط", tx: 20, ty: -2 },
 ];
 
 const VERSION_URL = "https://ddragon.leagueoflegends.com/api/versions.json";
 const CDN_DATA_BASE = "https://ddragon.leagueoflegends.com/cdn";
 const SPLASH_BASE = "https://ddragon.leagueoflegends.com/cdn/img/champion/splash";
+const LOCALE = "en_US";
+
+/*
+  مهم:
+  نحن نتعمد اختيار القص من الأطراف فقط.
+  لا نقترب من الوسط ولا من أعلى الوسط.
+*/
+const SAFE_ZONES = [
+  {
+    key: "top_left",
+    label: "أعلى يسار",
+    txMin: 24,
+    txMax: 36,
+    tyMin: 18,
+    tyMax: 30,
+  },
+  {
+    key: "top_right",
+    label: "أعلى يمين",
+    txMin: -36,
+    txMax: -24,
+    tyMin: 18,
+    tyMax: 30,
+  },
+  {
+    key: "left_middle",
+    label: "يسار الوسط",
+    txMin: 26,
+    txMax: 38,
+    tyMin: -8,
+    tyMax: 8,
+  },
+  {
+    key: "right_middle",
+    label: "يمين الوسط",
+    txMin: -38,
+    txMax: -26,
+    tyMin: -8,
+    tyMax: 8,
+  },
+  {
+    key: "bottom_left",
+    label: "أسفل يسار",
+    txMin: 24,
+    txMax: 36,
+    tyMin: -30,
+    tyMax: -18,
+  },
+  {
+    key: "bottom_right",
+    label: "أسفل يمين",
+    txMin: -36,
+    txMax: -24,
+    tyMin: -30,
+    tyMax: -18,
+  },
+];
 
 let versionPromise = null;
-let championListPromise = null;
+const championListByVersion = new Map();
 const championDetailsCache = new Map();
 
 function randomFrom(arr) {
@@ -36,20 +85,23 @@ function randomFrom(arr) {
 }
 
 function shuffle(arr) {
-  for (let i = arr.length - 1; i > 0; i -= 1) {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
+    [copy[i], copy[j]] = [copy[j], copy[i]];
   }
-  return arr;
+  return copy;
 }
 
-function jitter(value, amount) {
-  return value + (Math.random() * amount * 2 - amount);
+function randBetween(min, max) {
+  return Math.random() * (max - min) + min;
 }
 
 async function fetchJson(url) {
   const res = await fetch(url, { cache: "force-cache" });
-  if (!res.ok) throw new Error(`Fetch failed: ${url}`);
+  if (!res.ok) {
+    throw new Error(`Fetch failed: ${url} (${res.status})`);
+  }
   return res.json();
 }
 
@@ -66,48 +118,72 @@ export async function getLatestLolVersion() {
 }
 
 export async function getChampionList(version) {
-  if (!championListPromise) {
-    championListPromise = fetchJson(`${CDN_DATA_BASE}/${version}/data/en_US/champion.json`);
+  if (!championListByVersion.has(version)) {
+    championListByVersion.set(
+      version,
+      fetchJson(`${CDN_DATA_BASE}/${version}/data/${LOCALE}/champion.json`)
+    );
   }
-  return championListPromise;
+  return championListByVersion.get(version);
 }
 
 export async function getChampionDetails(version, championId) {
-  const key = `${version}:${championId}`;
-  if (!championDetailsCache.has(key)) {
+  const cacheKey = `${version}:${championId}`;
+  if (!championDetailsCache.has(cacheKey)) {
     championDetailsCache.set(
-      key,
-      fetchJson(`${CDN_DATA_BASE}/${version}/data/en_US/champion/${championId}.json`)
+      cacheKey,
+      fetchJson(`${CDN_DATA_BASE}/${version}/data/${LOCALE}/champion/${championId}.json`)
     );
   }
-  return championDetailsCache.get(key);
+  return championDetailsCache.get(cacheKey);
 }
 
 export function buildLolSkinAsset(version, championEntry, skinEntry) {
+  const skinNum = Number(skinEntry?.num ?? 0);
+
   return {
     version,
     championId: championEntry.id,
     championName: championEntry.name,
-    skinNum: Number(skinEntry.num ?? 0),
-    skinName: skinEntry.name || championEntry.name,
-    imageUrl: `${SPLASH_BASE}/${championEntry.id}_${Number(skinEntry.num ?? 0)}.jpg`,
+    skinNum,
+    skinName: skinEntry?.name || championEntry.name,
+    imageUrl: `${SPLASH_BASE}/${championEntry.id}_${skinNum}.jpg`,
   };
 }
 
 export function getBaseSkins(championEntry) {
   const skins = Array.isArray(championEntry?.skins) ? championEntry.skins : [];
-  return skins.filter((skin) => !skin?.parentSkin);
+
+  return skins.filter((skin) => {
+    // نستبعد أي مدخل فرعي واضح
+    if (skin?.parentSkin) return false;
+
+    const name = String(skin?.name || "").toLowerCase();
+
+    // حماية إضافية لو ظهر وصف واضح أنه chroma/variant
+    if (name.includes("chroma")) return false;
+    if (name.includes("variant")) return false;
+
+    return true;
+  });
 }
 
 export function createSpyImageView() {
   const zone = randomFrom(SAFE_ZONES);
+
   return {
     zoneKey: zone.key,
     zoneLabel: zone.label,
-    scale: Number(jitter(2.55, 0.18).toFixed(2)),
-    blurPx: Number(jitter(0.6, 0.2).toFixed(1)),
-    translateXPercent: Number(jitter(zone.tx, 4).toFixed(1)),
-    translateYPercent: Number(jitter(zone.ty, 4).toFixed(1)),
+
+    // زوم أقوى ليبتعد عن وضوح الشخصية
+    scale: Number(randBetween(3.45, 4.1).toFixed(2)),
+
+    // غباش خفيف
+    blurPx: Number(randBetween(0.45, 0.8).toFixed(1)),
+
+    // قص من الأطراف فقط
+    translateXPercent: Number(randBetween(zone.txMin, zone.txMax).toFixed(2)),
+    translateYPercent: Number(randBetween(zone.tyMin, zone.tyMax).toFixed(2)),
   };
 }
 
@@ -115,22 +191,37 @@ export async function pickRandomLolSkinRound() {
   const version = await getLatestLolVersion();
   const championList = await getChampionList(version);
   const champions = Object.values(championList?.data || {});
-  if (!champions.length) throw new Error("No champions found");
 
-  const championPick = randomFrom(champions);
-  const championDetails = await getChampionDetails(version, championPick.id);
-  const championData = championDetails?.data?.[championPick.id];
-  if (!championData) throw new Error("Champion details missing");
+  if (!champions.length) {
+    throw new Error("No champions found");
+  }
 
-  const skins = getBaseSkins(championData);
-  if (!skins.length) throw new Error("No eligible skins found");
+  // نجرب عدة أبطال عشوائيًا حتى نجد بطلًا عنده skin صالح
+  const shuffledChampions = shuffle(champions);
 
-  const skin = randomFrom(skins);
-  return {
-    modeKey: LOL_MODE_KEY,
-    lolSkin: buildLolSkinAsset(version, championData, skin),
-    spyImageView: createSpyImageView(),
-  };
+  for (const championPick of shuffledChampions) {
+    try {
+      const championDetails = await getChampionDetails(version, championPick.id);
+      const championData = championDetails?.data?.[championPick.id];
+
+      if (!championData) continue;
+
+      const skins = getBaseSkins(championData);
+      if (!skins.length) continue;
+
+      const skin = randomFrom(skins);
+
+      return {
+        modeKey: LOL_MODE_KEY,
+        lolSkin: buildLolSkinAsset(version, championData, skin),
+        spyImageView: createSpyImageView(),
+      };
+    } catch {
+      // نكمل للبطل التالي
+    }
+  }
+
+  throw new Error("No eligible League of Legends skins found");
 }
 
 export function getModeDefinition(modeKey) {

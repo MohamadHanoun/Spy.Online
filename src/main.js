@@ -254,20 +254,24 @@ function wire() {
 }
 
 function bindLolImageProtection() {
+  const isInsideProtectedLolImage = (target) => {
+    return target instanceof Element && !!target.closest(".lolProtected");
+  };
+
   document.addEventListener("contextmenu", (e) => {
-    if (e.target.closest(".lolProtected")) {
+    if (isInsideProtectedLolImage(e.target)) {
       e.preventDefault();
     }
   });
 
   document.addEventListener("dragstart", (e) => {
-    if (e.target.closest(".lolProtected")) {
+    if (isInsideProtectedLolImage(e.target)) {
       e.preventDefault();
     }
   });
 
   document.addEventListener("selectstart", (e) => {
-    if (e.target.closest(".lolProtected")) {
+    if (isInsideProtectedLolImage(e.target)) {
       e.preventDefault();
     }
   });
