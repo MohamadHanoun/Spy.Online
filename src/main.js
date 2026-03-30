@@ -940,15 +940,13 @@ async function newRound() {
   showScreen("lobby");
 }
 
-function buildLolImageStyle(imageUrl, view = null) {
+function buildLolImageStyle(view = null) {
   const tx = Number(view?.translateXPercent ?? 0);
   const ty = Number(view?.translateYPercent ?? 0);
   const scale = Number(view?.scale ?? 1);
   const blur = Number(view?.blurPx ?? 0);
-  const safeUrl = String(imageUrl || "").replace(/"/g, "%22");
 
   return [
-    `background-image:url("${safeUrl}")`,
     `--lol-tx:${tx}%`,
     `--lol-ty:${ty}%`,
     `--lol-scale:${scale}`,
@@ -978,14 +976,24 @@ function renderCard(me) {
       const partners = Array.isArray(me.spyPartnerNames) && me.spyPartnerNames.length
         ? `<div class="small">الجواسيس معك: ${escapeHtml(me.spyPartnerNames.join("، "))}</div>`
         : `<div class="small">أنت الأمبوستر. ترى نفس الصورة الأصلية لكن بجزء محدود ومشوّش.</div>`;
+
       return {
         html: `
           <div class="lolCard">
             <div class="big">أنت الأمبوستر 🕵️</div>
             ${partners}
-            <div class="lolSpyNote">الصورة الأصلية نفسها، لكن العرض هنا يعتمد على Zoom + Blur + Safe Zone فقط.</div>
+            <div class="lolSpyNote">
+              الصورة الأصلية نفسها، لكن العرض هنا يعتمد على Zoom + Blur + Safe Zone فقط.
+            </div>
+
             <div class="lolImageFrame spyView lolProtected">
-              <div class="lolImageVisual" style="${buildLolImageStyle(me.lolSkin.imageUrl, me.lolView)}"></div>
+              <img
+                class="lolImage"
+                src="${escapeHtml(me.lolSkin.imageUrl)}"
+                alt="League of Legends skin"
+                draggable="false"
+                style="${buildLolImageStyle(me.lolView)}"
+              />
               <div class="lolImageShield" aria-hidden="true"></div>
             </div>
           </div>
@@ -1002,8 +1010,15 @@ function renderCard(me) {
             <div class="lolChampionName">${escapeHtml(me.lolSkin.championName || "—")}</div>
             <div class="lolSkinName">${escapeHtml(me.lolSkin.skinName || "—")}</div>
           </div>
+
           <div class="lolImageFrame lolProtected">
-            <div class="lolImageVisual" style="${buildLolImageStyle(me.lolSkin.imageUrl, null)}" aria-label="${escapeHtml(`${me.lolSkin.championName || ""} ${me.lolSkin.skinName || ""}`)}"></div>
+            <img
+              class="lolImage"
+              src="${escapeHtml(me.lolSkin.imageUrl)}"
+              alt="${escapeHtml(`${me.lolSkin.championName || ""} ${me.lolSkin.skinName || ""}`)}"
+              draggable="false"
+              style="${buildLolImageStyle(null)}"
+            />
             <div class="lolImageShield" aria-hidden="true"></div>
           </div>
         </div>
