@@ -20,59 +20,31 @@ const CDN_DATA_BASE = "https://ddragon.leagueoflegends.com/cdn";
 const SPLASH_BASE = "https://ddragon.leagueoflegends.com/cdn/img/champion/splash";
 const LOCALE = "en_US";
 
-/*
-  مهم:
-  نحن نتعمد اختيار القص من الأطراف فقط.
-  لا نقترب من الوسط ولا من أعلى الوسط.
-*/
+
 const SAFE_ZONES = [
   {
     key: "top_left",
     label: "أعلى يسار",
-    txMin: 24,
-    txMax: 36,
-    tyMin: 18,
-    tyMax: 30,
+    originX: "left",
+    originY: "top",
   },
   {
     key: "top_right",
     label: "أعلى يمين",
-    txMin: -36,
-    txMax: -24,
-    tyMin: 18,
-    tyMax: 30,
-  },
-  {
-    key: "left_middle",
-    label: "يسار الوسط",
-    txMin: 26,
-    txMax: 38,
-    tyMin: -8,
-    tyMax: 8,
-  },
-  {
-    key: "right_middle",
-    label: "يمين الوسط",
-    txMin: -38,
-    txMax: -26,
-    tyMin: -8,
-    tyMax: 8,
+    originX: "right",
+    originY: "top",
   },
   {
     key: "bottom_left",
     label: "أسفل يسار",
-    txMin: 24,
-    txMax: 36,
-    tyMin: -30,
-    tyMax: -18,
+    originX: "left",
+    originY: "bottom",
   },
   {
     key: "bottom_right",
     label: "أسفل يمين",
-    txMin: -36,
-    txMax: -24,
-    tyMin: -30,
-    tyMax: -18,
+    originX: "right",
+    originY: "bottom",
   },
 ];
 
@@ -174,16 +146,18 @@ export function createSpyImageView() {
   return {
     zoneKey: zone.key,
     zoneLabel: zone.label,
+    originX: zone.originX,
+    originY: zone.originY,
 
-    // زوم أقوى ليبتعد عن وضوح الشخصية
-    scale: Number(randBetween(3.45, 4.1).toFixed(2)),
+    // زوم واضح من الزاوية نفسها فقط
+    scale: Number(randBetween(3.6, 4.15).toFixed(2)),
 
     // غباش خفيف
     blurPx: Number(randBetween(0.45, 0.8).toFixed(1)),
 
-    // قص من الأطراف فقط
-    translateXPercent: Number(randBetween(zone.txMin, zone.txMax).toFixed(2)),
-    translateYPercent: Number(randBetween(zone.tyMin, zone.tyMax).toFixed(2)),
+    // نخلي الإزاحة صفر حتى لا يرجع القص إلى الوسط
+    translateXPercent: 0,
+    translateYPercent: 0,
   };
 }
 

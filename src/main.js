@@ -949,12 +949,16 @@ function buildLolImageStyle(view = null) {
   const ty = Number(view?.translateYPercent ?? 0);
   const scale = Number(view?.scale ?? 1);
   const blur = Number(view?.blurPx ?? 0);
+  const originX = view?.originX || "center";
+  const originY = view?.originY || "center";
 
   return [
     `--lol-tx:${tx}%`,
     `--lol-ty:${ty}%`,
     `--lol-scale:${scale}`,
     `--lol-blur:${blur}px`,
+    `--lol-origin-x:${originX}`,
+    `--lol-origin-y:${originY}`,
   ].join("; ");
 }
 

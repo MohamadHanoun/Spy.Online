@@ -1099,7 +1099,7 @@ button:active{
   object-position:center center;
   transform:translate(var(--lol-tx, 0%), var(--lol-ty, 0%)) scale(var(--lol-scale, 1));
   filter:blur(var(--lol-blur, 0px));
-  transform-origin:center center;
+  transform-origin:var(--lol-origin-x, center) var(--lol-origin-y, center);
   user-select:none;
   -webkit-user-drag:none;
   pointer-events:none;
