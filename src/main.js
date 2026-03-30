@@ -991,7 +991,7 @@ function renderCard(me) {
             <div class="big">أنت الأمبوستر 🕵️</div>
             ${partners}
             <div class="lolSpyNote">
-              الصورة الأصلية نفسها، لكن العرض هنا يعتمد على Zoom + Blur + Safe Zone فقط.
+             كون زلمة واعرف الشامبيون مع السكن 
             </div>
 
             <div class="lolImageFrame spyView lolProtected">

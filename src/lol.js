@@ -127,12 +127,10 @@ export function getBaseSkins(championEntry) {
   const skins = Array.isArray(championEntry?.skins) ? championEntry.skins : [];
 
   return skins.filter((skin) => {
-    // نستبعد أي مدخل فرعي واضح
     if (skin?.parentSkin) return false;
 
     const name = String(skin?.name || "").toLowerCase();
 
-    // حماية إضافية لو ظهر وصف واضح أنه chroma/variant
     if (name.includes("chroma")) return false;
     if (name.includes("variant")) return false;
 
@@ -149,13 +147,10 @@ export function createSpyImageView() {
     originX: zone.originX,
     originY: zone.originY,
 
-    // زوم واضح من الزاوية نفسها فقط
-    scale: Number(randBetween(3.6, 4.15).toFixed(2)),
+    scale: Number(randBetween(3.6, 3.15).toFixed(2)),
 
-    // غباش خفيف
     blurPx: Number(randBetween(0.45, 0.8).toFixed(1)),
 
-    // نخلي الإزاحة صفر حتى لا يرجع القص إلى الوسط
     translateXPercent: 0,
     translateYPercent: 0,
   };
