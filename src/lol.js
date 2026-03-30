@@ -105,7 +105,7 @@ export function createSpyImageView() {
     zoneKey: zone.key,
     zoneLabel: zone.label,
     scale: Number(jitter(2.55, 0.18).toFixed(2)),
-    blurPx: Number(jitter(9, 1.5).toFixed(1)),
+    blurPx: Number(jitter(0,6 ).toFixed(1)),
     translateXPercent: Number(jitter(zone.tx, 4).toFixed(1)),
     translateYPercent: Number(jitter(zone.ty, 4).toFixed(1)),
   };

@@ -126,6 +126,7 @@ async function boot() {
 
   initCreateDefaultsUI();
   wire();
+  bindLolImageProtection();
   applyLeaveButtonState();
 
   await ensureAnonAuth();
@@ -174,6 +175,26 @@ function wire() {
       console.error(err);
     }
   });
+  function bindLolImageProtection() {
+  document.addEventListener("contextmenu", (e) => {
+    if (e.target.closest(".lolProtected")) {
+      e.preventDefault();
+    }
+  });
+
+  document.addEventListener("dragstart", (e) => {
+    if (e.target.closest(".lolProtected")) {
+      e.preventDefault();
+    }
+  });
+
+  document.addEventListener("selectstart", (e) => {
+    if (e.target.closest(".lolProtected")) {
+      e.preventDefault();
+    }
+  });
+}
+
 
   el.btnJoinRoom.addEventListener("click", async () => {
     try {
@@ -904,12 +925,20 @@ async function newRound() {
   showScreen("lobby");
 }
 
-function buildLolImageStyle(view = null) {
+function buildLolImageStyle(imageUrl, view = null) {
   const tx = Number(view?.translateXPercent ?? 0);
   const ty = Number(view?.translateYPercent ?? 0);
   const scale = Number(view?.scale ?? 1);
   const blur = Number(view?.blurPx ?? 0);
-  return `--lol-tx:${tx}%; --lol-ty:${ty}%; --lol-scale:${scale}; --lol-blur:${blur}px;`;
+  const safeUrl = String(imageUrl || "").replace(/"/g, "%22");
+
+  return [
+    `background-image:url("${safeUrl}")`,
+    `--lol-tx:${tx}%`,
+    `--lol-ty:${ty}%`,
+    `--lol-scale:${scale}`,
+    `--lol-blur:${blur}px`,
+  ].join("; ");
 }
 
 function renderCard(me) {
@@ -940,8 +969,9 @@ function renderCard(me) {
             <div class="big">أنت الأمبوستر 🕵️</div>
             ${partners}
             <div class="lolSpyNote">الصورة الأصلية نفسها، لكن العرض هنا يعتمد على Zoom + Blur + Safe Zone فقط.</div>
-            <div class="lolImageFrame spyView">
-              <img class="lolImage" src="${escapeHtml(me.lolSkin.imageUrl)}" alt="League of Legends skin" style="${buildLolImageStyle(me.lolView)}" />
+            <div class="lolImageFrame spyView lolProtected">
+              <div class="lolImageVisual" style="${buildLolImageStyle(me.lolSkin.imageUrl, me.lolView)}"></div>
+              <div class="lolImageShield" aria-hidden="true"></div>
             </div>
           </div>
         `,
@@ -958,7 +988,8 @@ function renderCard(me) {
             <div class="lolSkinName">${escapeHtml(me.lolSkin.skinName || "—")}</div>
           </div>
           <div class="lolImageFrame">
-            <img class="lolImage" src="${escapeHtml(me.lolSkin.imageUrl)}" alt="${escapeHtml(`${me.lolSkin.championName || ""} ${me.lolSkin.skinName || ""}`)}" style="${buildLolImageStyle(null)}" />
+            <div class="lolImageVisual" style="${buildLolImageStyle(me.lolSkin.imageUrl, null)}" aria-label="${escapeHtml(`${me.lolSkin.championName || ""} ${me.lolSkin.skinName || ""}`)}"></div>
+            <div class="lolImageShield" aria-hidden="true"></div>
           </div>
         </div>
       `,
