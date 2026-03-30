@@ -142,7 +142,9 @@ h2{ font-size: 16px; }
   border: 1px solid rgba(34,49,85,.75);
   color: var(--muted);
   font-size: 12px;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .actions{
@@ -586,4 +588,336 @@ h2{ font-size: 16px; }
 .voteBanner[data-type="info"]{
   background: rgba(27,73,148,.22);
   border-color: rgba(90,168,255,.45);
+}
+
+/* =========================
+   NEW PHASE UI
+========================= */
+.hidden{ display:none !important; }
+
+.homeShell,
+.createShell,
+.lobbyShell,
+.roundCardShell,
+.playShell{
+  padding: 18px;
+}
+
+.homeHeader.compact h1{
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.homeSimpleGrid{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap:16px;
+  margin-top: 18px;
+}
+
+.compactPanel{
+  border-radius: 24px;
+}
+
+.singleAction .btn{
+  width:100%;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.sectionTopRow{
+  margin-bottom: 16px;
+}
+
+.createLayout,
+.lobbyLayout,
+.playLayout{
+  display:grid;
+  gap:16px;
+}
+
+.createLayout{
+  grid-template-columns: 340px minmax(0, 1fr);
+  align-items:start;
+}
+
+.lobbyLayout{
+  grid-template-columns: minmax(0, 1fr) 360px;
+  align-items:start;
+}
+
+.lobbyColumn{
+  min-width:0;
+}
+
+.playLayout{
+  grid-template-columns: minmax(0, 1fr) 320px;
+  align-items:start;
+  margin-top: 14px;
+}
+
+.playHeaderBlock{
+  margin-bottom: 14px;
+}
+
+.playMainColumn,
+.playSideColumn,
+.publicColumn,
+.hostColumn{
+  min-width:0;
+}
+
+.modeList{
+  display:grid;
+  gap:10px;
+}
+
+.modeOption{
+  position:relative;
+}
+
+.modeOption input{
+  position:absolute;
+  opacity:0;
+  pointer-events:none;
+}
+
+.modeCard{
+  display:block;
+  padding:14px;
+  border-radius:20px;
+  border:1px solid rgba(34,49,85,.82);
+  background: rgba(7,12,24,.45);
+  cursor:pointer;
+  transition: border-color .16s ease, transform .16s ease, box-shadow .16s ease;
+}
+
+.modeCardTitle{
+  display:block;
+  font-size:16px;
+  font-weight:1000;
+}
+
+.modeCardDesc{
+  display:block;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.75;
+  margin-top:6px;
+}
+
+.modeOption input:checked + .modeCard{
+  border-color: rgba(90,168,255,.95);
+  box-shadow: 0 0 0 3px rgba(90,168,255,.14);
+  transform: translateY(-1px);
+}
+
+.summaryGrid{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap:10px;
+}
+
+.summaryItem{
+  padding:12px;
+  border-radius:16px;
+  border:1px solid rgba(34,49,85,.72);
+  background: rgba(14,22,40,.55);
+  min-width:0;
+}
+
+.summaryLabel{
+  display:block;
+  color:var(--muted);
+  font-size:12px;
+  margin-bottom:6px;
+}
+
+.miniSummaryBox{
+  margin-top:8px;
+  padding:12px;
+  border-radius:16px;
+  border:1px solid rgba(34,49,85,.72);
+  background: rgba(14,22,40,.55);
+  line-height:1.8;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.lobbyMetaRow{
+  margin-top: 12px;
+  display:grid;
+  grid-template-columns: 1fr;
+  gap:8px;
+}
+
+.lobbyMetaRow .pill{
+  width:100%;
+  border-radius:16px;
+  text-align:center;
+}
+
+.modeBadge{
+  margin-top: 6px;
+  display:inline-flex;
+}
+
+.compactInfoCard{
+  margin-top: 0;
+}
+
+.stickyActions{
+  margin-top: 0;
+}
+
+.mobileCardBox{
+  margin-top: 12px;
+}
+
+.lolCard{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.lolMetaBox{
+  display:grid;
+  gap:6px;
+}
+
+.lolChampionName{
+  font-size:20px;
+  font-weight:1100;
+}
+
+.lolSkinName{
+  color:var(--muted);
+  font-size:14px;
+  line-height:1.75;
+}
+
+.lolImageFrame{
+  position:relative;
+  width:100%;
+  overflow:hidden;
+  border-radius:22px;
+  border:1px solid rgba(34,49,85,.8);
+  background: rgba(7,12,24,.45);
+  aspect-ratio: 16 / 9;
+}
+
+.lolImage{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+  transform: translate(var(--lol-tx, 0%), var(--lol-ty, 0%)) scale(var(--lol-scale, 1));
+  filter: blur(var(--lol-blur, 0px));
+  transform-origin: center center;
+}
+
+.lolImageFrame.spyView{
+  box-shadow: inset 0 0 0 1px rgba(255,77,94,.18);
+}
+
+.lolSpyNote{
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.8;
+}
+
+.publicInfoCard{
+  margin-top:0;
+}
+
+@media (max-width: 980px){
+  .createLayout,
+  .lobbyLayout,
+  .playLayout,
+  .homeSimpleGrid{
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px){
+  .container{
+    padding: 14px 12px 110px;
+  }
+
+  .topbar{
+    padding: 10px 12px calc(10px + env(safe-area-inset-top));
+    align-items:center;
+  }
+
+  .title{
+    font-size: 18px;
+  }
+
+  .subtitle{
+    font-size: 11px;
+  }
+
+  .homeShell,
+  .createShell,
+  .lobbyShell,
+  .roundCardShell,
+  .playShell{
+    padding: 14px;
+    border-radius: 22px;
+  }
+
+  .homeHeader.compact h1,
+  .playHeaderBlock h1{
+    font-size: 24px;
+    line-height:1.35;
+  }
+
+  .summaryGrid{
+    grid-template-columns: 1fr;
+  }
+
+  .playerRow{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .playerActionsInline{
+    width:100%;
+  }
+
+  .playerActionsInline .btn-small{
+    flex:1 1 0 !important;
+  }
+
+  .mobileStackRow{
+    flex-direction:column;
+    align-items:stretch;
+  }
+
+  .timerValue{
+    font-size: 30px;
+  }
+
+  .firstQuestion{
+    font-size:16px;
+    line-height:1.9;
+  }
+
+  .lolChampionName{
+    font-size:18px;
+  }
+
+  .revealBox,
+  .listBox,
+  .statusCard,
+  .codeCard,
+  .timerBox{
+    border-radius:18px;
+  }
+
+  .btn{
+    padding: 13px 12px;
+    font-size: 15px;
+  }
 }

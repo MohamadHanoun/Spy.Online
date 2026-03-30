@@ -84,9 +84,12 @@ export async function upsertJoin(code, uid, name) {
     {
       name,
       role: "pending",
+      cardType: "classic",
       word: "",
       categoryLabel: "",
       spyPartnerNames: [],
+      lolSkin: null,
+      lolView: null,
       updatedAt: serverTimestamp(),
     },
     { merge: true }
@@ -202,18 +205,25 @@ export async function hostStartGame({
   spiesCount,
   word,
   categoryLabel,
+  roundMode = "classic",
+  roundData = null,
   spiesUids,
   firstQuestion,
   players,
   spyTeammatesVisible,
 }) {
   const batch = writeBatch(db);
+  const lolSkin = roundData?.lolSkin || null;
+  const spyImageView = roundData?.spyImageView || null;
 
   batch.delete(refs.results(code));
 
   batch.set(refs.hostSecret(code), {
+    roundMode,
     word,
     categoryLabel,
+    lolSkin,
+    spyImageView,
     spiesUids,
     updatedAt: serverTimestamp(),
   });
@@ -243,13 +253,29 @@ export async function hostStartGame({
 
     batch.delete(refs.vote(code, p.uid));
 
-    batch.update(refs.privPlayer(code, p.uid), {
-      role: isSpy ? "spy" : "civilian",
-      word: isSpy ? "" : word,
-      categoryLabel: isSpy ? "" : categoryLabel,
-      spyPartnerNames: partnerNames,
-      updatedAt: serverTimestamp(),
-    });
+    if (roundMode === "lol_skin") {
+      batch.update(refs.privPlayer(code, p.uid), {
+        role: isSpy ? "spy" : "civilian",
+        cardType: "lol_skin",
+        word: "",
+        categoryLabel: "",
+        spyPartnerNames: partnerNames,
+        lolSkin,
+        lolView: isSpy ? spyImageView : null,
+        updatedAt: serverTimestamp(),
+      });
+    } else {
+      batch.update(refs.privPlayer(code, p.uid), {
+        role: isSpy ? "spy" : "civilian",
+        cardType: "classic",
+        word: isSpy ? "" : word,
+        categoryLabel: isSpy ? "" : categoryLabel,
+        spyPartnerNames: partnerNames,
+        lolSkin: null,
+        lolView: null,
+        updatedAt: serverTimestamp(),
+      });
+    }
   }
 
   await batch.commit();
@@ -268,8 +294,10 @@ export async function hostEndGame(code) {
   const room = roomSnap.data();
 
   await setDoc(refs.results(code), {
+    roundMode: h.roundMode || "classic",
     word: h.word || "",
     categoryLabel: h.categoryLabel || "",
+    lolSkin: h.lolSkin || null,
     spiesUids: Array.isArray(h.spiesUids) ? h.spiesUids : [],
     revealedSpyUids: Array.isArray(room.revealedSpyUids) ? room.revealedSpyUids : [],
     roundWinner: room.roundWinner || "",
@@ -296,9 +324,12 @@ export async function hostNewRound(code, playerUids = [], voteUids = []) {
   for (const uid of uniqueArray(playerUids)) {
     batch.update(refs.privPlayer(code, uid), {
       role: "pending",
+      cardType: "classic",
       word: "",
       categoryLabel: "",
       spyPartnerNames: [],
+      lolSkin: null,
+      lolView: null,
       updatedAt: serverTimestamp(),
     });
   }

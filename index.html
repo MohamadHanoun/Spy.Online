@@ -13,151 +13,126 @@
       <div class="logo" aria-hidden="true">🕵️‍♂️</div>
       <div class="titles">
         <div class="title">لعبة الجاسوس</div>
-        <div class="subtitle">  قول شكرا لجهودي الجبارة لاني اتنازلت وعملتلك اللعبة </div>
+        <div class="subtitle">أونلاين مع الأصدقاء</div>
       </div>
     </div>
-    <button id="btnLeave" class="btn btn-ghost" type="button">مغادرة</button>
+    <button id="btnLeave" class="btn btn-ghost hidden" type="button">مغادرة</button>
   </header>
 
   <main class="container">
     <!-- HOME -->
     <section id="screenHome" class="screen">
-  <div class="card hero homeHero">
-    <div class="heroGlow"></div>
+      <div class="card hero homeShell">
+        <div class="heroGlow"></div>
 
-    <div class="homeHeader">
-      <h1>ابدأ مع اصدقائك</h1>
-      <p class="hint">
-        اعمل غرفة، خذ الكود وابعتو لرفقاتك. كل واحد بيفتح الرابط وبيشوف بطاقته لحاله.
-      </p>
-    </div>
+        <div class="homeHeader compact">
+          <h1> كيف فادي عرف وهو جاسوس :To3oxic be like </h1>
+          <p class="hint">اكتب اسمك، ثم إمّا تنشئ غرفة جديدة أو تدخل كود غرفة جاهزة.</p>
+        </div>
 
-    <div class="homeLayout">
-      <!-- العمود الأول: معلومات سريعة + الانضمام -->
-      <div class="homeMainBlock">
-        <div class="card muted inner homePanel">
-          <h2>تسجيل الدخول </h2>
+        <div class="homeSimpleGrid">
+          <div class="card muted inner compactPanel">
+            <div class="field">
+              <label class="label" for="nameInput">اسمك</label>
+              <input id="nameInput" class="input" type="text" autocomplete="nickname" placeholder="مثال: أبو عدي" />
+            </div>
 
-          <div class="field">
-            <label class="label" for="nameInput">اسمك</label>
-            <input
-              id="nameInput"
-              class="input"
-              type="text"
-              autocomplete="nickname"
-              placeholder="مثال: ابو عدي"
-            />
+            <div class="actions singleAction">
+              <button id="btnOpenCreateRoom" class="btn btn-primary" type="button">إنشاء غرفة</button>
+            </div>
           </div>
 
-          <div class="divider"></div>
-
-          <div class="field">
-            <label class="label" for="roomCodeInput">انضمام لغرفة</label>
-            <input
-              id="roomCodeInput"
-              class="input"
-              type="text"
-              placeholder="CODE"
-            />
-            <div class="actions homeActions">
-              <button id="btnJoinRoom" class="btn btn-secondary" type="button">
-                انضمام
-              </button>
+          <div class="card muted inner compactPanel">
+            <div class="field">
+              <label class="label" for="roomCodeInput">كود الغرفة</label>
+              <input id="roomCodeInput" class="input" type="text" placeholder="CODE" />
             </div>
-            <div class="hint">اكتب الكود إذا عندك غرفة جاهزة.</div>
+
+            <div class="actions singleAction">
+              <button id="btnJoinRoom" class="btn btn-secondary" type="button">انضمام</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="homeError" class="error" role="alert" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- CREATE ROOM -->
+    <section id="screenCreateRoom" class="screen hidden">
+      <div class="card hero createShell">
+        <div class="row spread sectionTopRow">
+          <div>
+            <h1 class="m0">إنشاء غرفة</h1>
+            <p class="hint">الإعدادات تظهر هنا فقط للهوست قبل الدخول إلى اللوبي.</p>
+          </div>
+          <button id="btnBackHome" class="btn btn-ghost" type="button">رجوع</button>
+        </div>
+
+        <div class="createLayout">
+          <div class="card muted inner">
+            <div class="field">
+              <label class="label">المود</label>
+              <div id="createModeList" class="modeList" role="radiogroup" aria-label="المود"></div>
+              <div id="createModeHint" class="hint">—</div>
+            </div>
+          </div>
+
+          <div class="card muted inner">
+            <div class="grid">
+              <div id="createClassicFields" class="field span2">
+                <label class="label">الفئات</label>
+                <div id="createCategoryList" class="chips" role="group" aria-label="الفئات"></div>
+                <div class="hint">هذا القسم يُستخدم فقط في الوضع الكلاسيكي.</div>
+              </div>
+
+              <div class="field">
+                <label class="label" for="createTargetPlayers">عدد اللاعبين المطلوب</label>
+                <input id="createTargetPlayers" class="input" type="number" inputmode="numeric" min="0" placeholder="0 = تجاهل" />
+              </div>
+
+              <div class="field">
+                <label class="label" for="createSpiesCount">عدد الجواسيس / الأمبوستر</label>
+                <input id="createSpiesCount" class="input" type="number" inputmode="numeric" min="1" />
+              </div>
+
+              <div class="field">
+                <label class="label" for="createRoundMinutes">الوقت بالدقائق</label>
+                <input id="createRoundMinutes" class="input" type="number" inputmode="numeric" min="0" placeholder="0 = بدون مؤقت" />
+              </div>
+
+              <div class="field span2">
+                <label class="toggleRow" for="createSpyTeammatesVisible">
+                  <input id="createSpyTeammatesVisible" type="checkbox" />
+                  <span>الجواسيس يعرفون بعض</span>
+                </label>
+                <div class="hint">عند وجود أكثر من جاسوس، كل جاسوس يرى أسماء زملائه فقط إذا كان هذا الخيار مفعّلًا.</div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="createRoomBox">
+              <div class="createRoomText">
+                <div class="createRoomTitle">جاهز لإنشاء الغرفة</div>
+                <div class="hint">  Have fun </div>
+              </div>
+              <button id="btnCreateRoomConfirm" class="btn btn-primary createRoomBtn" type="button">إنشاء الغرفة الآن</button>
+            </div>
+
+            <div id="createError" class="error" role="alert" aria-live="polite"></div>
           </div>
         </div>
       </div>
-
-      <!-- العمود الثاني: إعدادات الإنشاء -->
-      <div class="homeSettingsBlock">
-        <div class="card muted inner homePanel settingsPanel">
-          <div class="row spread homePanelTop">
-            <h2 class="m0">إعدادات الغرفة (للهوست)</h2>
-            <span class="pill">Auto Save كرمال ريحك </span>
-          </div>
-
-          <div class="grid">
-            <div class="field span2">
-              <label class="label">الفئات</label>
-              <div id="homeCategoryList" class="chips" role="group" aria-label="الفئات"></div>
-              <div class="hint">اختَر فئة أو أكثر.</div>
-            </div>
-
-            <div class="field">
-              <label class="label" for="homeTargetPlayers">عدد اللاعبين المطلوب</label>
-              <input
-                id="homeTargetPlayers"
-                class="input"
-                type="number"
-                inputmode="numeric"
-                min="0"
-                placeholder="مثال: 6 (0 = تجاهل)"
-              />
-              <div class="hint">إذا حطّيت رقم، لازم يطابق عدد الموجودين وقت Start.</div>
-            </div>
-
-            <div class="field">
-              <label class="label" for="homeSpiesCount">عدد الجواسيس</label>
-              <input
-                id="homeSpiesCount"
-                class="input"
-                type="number"
-                inputmode="numeric"
-                min="0"
-                placeholder="مثال: 2"
-              />
-              <div class="hint">لازم يكون أقل من عدد اللاعبين وقت Start.</div>
-            </div>
-
-            <div class="field span2">
-              <label class="label" for="homeRoundMinutes">الوقت بالدقائق (اختياري)</label>
-              <input
-                id="homeRoundMinutes"
-                class="input"
-                type="number"
-                inputmode="numeric"
-                min="0"
-                placeholder="مثال: 8 (0 = بدون مؤقّت)"
-              />
-            </div>
-
-            <div class="field span2">
-              <label class="toggleRow" for="homeSpyTeammatesVisible">
-                <input id="homeSpyTeammatesVisible" type="checkbox" />
-                <span>الجواسيس يعرفون بعض</span>
-              </label>
-              <div class="hint">إذا كان عدد الجواسيس أكثر من 1، كل جاسوس يرى أسماء الجواسيس الآخرين في بطاقته.</div>
-            </div>
-          </div>
-
-          <div class="divider"></div>
-
-          <div class="createRoomBox">
-            <div class="createRoomText">
-              <div class="createRoomTitle">إنشاء غرفة جديدة</div>
-              <div class="hint">بعد الإنشاء تأخذ الكود وتشاركه مع اللاعبين.</div>
-            </div>
-
-            <button id="btnCreateRoom" class="btn btn-primary createRoomBtn" type="button">
-              إنشاء الغرفة
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div id="homeError" class="error" role="alert" aria-live="polite"></div>
-  </div>
-</section>
+    </section>
 
     <!-- LOBBY -->
     <section id="screenLobby" class="screen hidden">
-      <div class="card">
-        <div class="row spread">
+      <div class="card lobbyShell">
+        <div class="row spread lobbyTopRow">
           <div>
-            <h1 class="m0">الغرفة</h1>
-            <div class="hint">شارك الكود مع اصدقائك</div>
+            <h1 class="m0">اللوبي</h1>
+            <div class="hint">شارك الكود مع أصدقائك ثم انتظروا بدء الجولة.</div>
           </div>
 
           <div class="codeCard">
@@ -169,73 +144,110 @@
 
         <div class="divider"></div>
 
-        <div class="grid">
-          <div class="field">
-            <label class="label">المشاركين</label>
-            <div id="playersList" class="listBox">—</div>
-            <div class="hint">لازم 2+ لتبدأ الجولة.</div>
-          </div>
-
-          <div class="field">
-            <label class="label">إعدادات الغرفة</label>
-
-            <div class="statusCard">
-              <div class="statusRow">
-                <div class="pill">Status</div>
-                <div id="statusPill" class="pill">—</div>
-              </div>
-
-              <div class="statusMain">
-                <div id="statusTitle" class="statusTitle">—</div>
-                <div id="statusHint" class="statusHint">—</div>
-              </div>
-
-              <div class="divider"></div>
-
-              <div class="grid">
-                <div class="field span2">
-                  <label class="label">الفئات</label>
-                  <div id="lobbyCategoryList" class="chips" role="group" aria-label="الفئات"></div>
-                  <div class="hint">غيرها قبل Start. بعد Start بتنقفل للجولة الحالية.</div>
+        <div class="lobbyLayout">
+          <div class="lobbyColumn publicColumn">
+            <div class="card muted inner">
+              <label class="label">معلومات الغرفة</label>
+              <div class="statusCard publicInfoCard">
+                <div class="statusRow">
+                  <div class="pill">الحالة</div>
+                  <div id="statusPill" class="pill">—</div>
                 </div>
 
-                <div class="field">
-                  <label class="label" for="lobbyTargetPlayers">عدد اللاعبين المطلوب</label>
-                  <input id="lobbyTargetPlayers" class="input" type="number" inputmode="numeric" min="0" placeholder="0 = تجاهل" />
+                <div class="statusMain">
+                  <div id="statusTitle" class="statusTitle">—</div>
+                  <div id="statusHint" class="statusHint">—</div>
                 </div>
 
-                <div class="field">
-                  <label class="label" for="lobbySpiesCount">عدد الجواسيس</label>
-                  <input id="lobbySpiesCount" class="input" type="number" inputmode="numeric" min="0" />
+                <div class="divider"></div>
+
+                <div class="summaryGrid">
+                  <div class="summaryItem">
+                    <span class="summaryLabel">المود</span>
+                    <strong id="publicModeView">—</strong>
+                  </div>
+                  <div class="summaryItem">
+                    <span class="summaryLabel">اللاعبون</span>
+                    <strong id="publicPlayersView">—</strong>
+                  </div>
+                  <div class="summaryItem">
+                    <span class="summaryLabel">الجواسيس</span>
+                    <strong id="publicSpiesView">—</strong>
+                  </div>
+                  <div class="summaryItem">
+                    <span class="summaryLabel">الوقت</span>
+                    <strong id="publicTimeView">—</strong>
+                  </div>
                 </div>
 
-                <div class="field">
-                  <label class="label" for="lobbyRoundMinutes">الوقت بالدقائق (اختياري)</label>
-                  <input id="lobbyRoundMinutes" class="input" type="number" inputmode="numeric" min="0" />
+                <div class="divider"></div>
+
+                <div>
+                  <div class="summaryLabel">الفئة / المود الحالي</div>
+                  <div id="publicCategoriesView" class="miniSummaryBox">—</div>
                 </div>
 
-                <div class="field span2">
-                  <label class="toggleRow" for="lobbySpyTeammatesVisible">
-                    <input id="lobbySpyTeammatesVisible" type="checkbox" />
-                    <span>الجواسيس يعرفون بعض</span>
-                  </label>
-                  <div class="hint">يتفعّل للجولة القادمة فقط، ولا يظهر للهوست من هم الجواسيس على الواجهة.</div>
+                <div class="row spread lobbyMetaRow">
+                  <div class="pill" id="metaInfo">—</div>
+                  <div class="pill" id="saveState">—</div>
                 </div>
               </div>
-
-              <div class="row spread" style="margin-top:10px">
-                <div class="pill" id="metaInfo">—</div>
-                <div class="pill" id="saveState">—</div>
-              </div>
-
-              <div id="hostBox" class="actions hidden">
-                <button id="btnStart" class="btn btn-primary" type="button">ابدأ الجولة</button>
-              </div>
-
-              <div id="lobbyError" class="error" role="alert" aria-live="polite"></div>
             </div>
 
-            <div class="hint">ملاحظة: الهوست لحاله يقدر يعدّل الإعدادات ويبدأ/ينهي.</div>
+            <div class="card muted inner">
+              <label class="label">اللاعبون</label>
+              <div id="playersList" class="listBox playersBoard">—</div>
+              <div class="hint">اللاعب العادي يرى فقط المعلومات العامة، أما أدوات الإدارة فتظهر للهوست فقط.</div>
+            </div>
+          </div>
+
+          <div id="lobbyHostPanel" class="lobbyColumn hostColumn hidden">
+            <div class="card muted inner">
+              <label class="label">إعدادات الهوست</label>
+              <div class="statusCard">
+                <div class="field">
+                  <label class="label">المود</label>
+                  <div id="lobbyModeList" class="modeList" role="radiogroup" aria-label="مود اللوبي"></div>
+                  <div id="lobbyModeHint" class="hint">—</div>
+                </div>
+
+                <div class="grid" style="margin-top: 14px;">
+                  <div id="lobbyClassicFields" class="field span2">
+                    <label class="label">الفئات</label>
+                    <div id="lobbyCategoryList" class="chips" role="group" aria-label="الفئات"></div>
+                    <div class="hint">تُستخدم فقط إذا كان المود كلاسيكي.</div>
+                  </div>
+
+                  <div class="field">
+                    <label class="label" for="lobbyTargetPlayers">عدد اللاعبين المطلوب</label>
+                    <input id="lobbyTargetPlayers" class="input" type="number" inputmode="numeric" min="0" placeholder="0 = تجاهل" />
+                  </div>
+
+                  <div class="field">
+                    <label class="label" for="lobbySpiesCount">عدد الجواسيس / الأمبوستر</label>
+                    <input id="lobbySpiesCount" class="input" type="number" inputmode="numeric" min="1" />
+                  </div>
+
+                  <div class="field">
+                    <label class="label" for="lobbyRoundMinutes">الوقت بالدقائق</label>
+                    <input id="lobbyRoundMinutes" class="input" type="number" inputmode="numeric" min="0" />
+                  </div>
+
+                  <div class="field span2">
+                    <label class="toggleRow" for="lobbySpyTeammatesVisible">
+                      <input id="lobbySpyTeammatesVisible" type="checkbox" />
+                      <span>الجواسيس يعرفون بعض</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div id="hostBox" class="actions">
+                  <button id="btnStart" class="btn btn-primary" type="button">ابدأ الجولة</button>
+                </div>
+
+                <div id="lobbyError" class="error" role="alert" aria-live="polite"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -243,12 +255,13 @@
 
     <!-- CARD -->
     <section id="screenCard" class="screen hidden" aria-live="polite">
-      <div class="card">
+      <div class="card roundCardShell">
         <h1>بطاقتك</h1>
+        <div id="roundModeBadge" class="pill modeBadge">—</div>
 
         <div id="cardCover" class="cover">
           <div class="coverTitle">اضغط لتظهر البطاقة</div>
-          <div class="coverHint">للسرّية إذا في حدا جنبك.</div>
+          <div class="coverHint">للسرية إذا كان أحد بجانبك.</div>
           <button id="btnRevealCard" class="btn btn-primary" type="button">إظهار</button>
         </div>
 
@@ -262,45 +275,53 @@
 
     <!-- PLAY -->
     <section id="screenPlay" class="screen hidden">
-  <div class="card">
-    <h1>الجولة شغّالة</h1>
-    <p class="hint">ابدأوا الأسئلة… الجاسوس يحاول يلقط الكلمة بدون ما ينكشف.</p>
+      <div class="card playShell">
+        <div class="playHeaderBlock">
+          <h1>الجولة شغالة</h1>
+          <p id="playHint" class="hint">ابدأوا الأسئلة، والكل يحاول يكتشف الأمبوستر.</p>
+        </div>
 
-    <div class="card muted inner">
-      <div class="row spread">
-        <div class="pill">أول سؤال عشوائي</div>
-        <div class="pill">مرة واحدة فقط</div>
+        <div class="card muted inner compactInfoCard">
+          <div class="row spread">
+            <div class="pill">أول سؤال عشوائي</div>
+            <div class="pill">مرة واحدة فقط</div>
+          </div>
+          <div id="firstQuestion" class="firstQuestion">—</div>
+        </div>
+
+        <div class="timerBox">
+          <div class="timerLabel">المؤقّت</div>
+          <div id="timerValue" class="timerValue">—</div>
+          <div class="hint">حافظوا على سرعة الجولة ووضوح الأسئلة.</div>
+        </div>
+
+        <div class="playLayout">
+          <div class="playMainColumn">
+            <div class="card muted inner compactInfoCard">
+              <div class="row spread mobileStackRow">
+                <div class="pill">اللاعبون والتصويت</div>
+                <div id="voteSummaryPill" class="pill">—</div>
+              </div>
+              <div id="voteBanner" class="voteBanner hidden">—</div>
+              <div id="playError" class="error" role="alert" aria-live="polite"></div>
+              <div id="playPlayersList" class="listBox playersBoard">—</div>
+            </div>
+          </div>
+
+          <div class="playSideColumn">
+            <div class="actions singleAction stickyActions">
+              <button id="btnTogglePlayCard" class="btn btn-secondary" type="button">إظهار بطاقتي</button>
+            </div>
+
+            <div id="playCardBox" class="revealBox hidden mobileCardBox"></div>
+
+            <div id="hostEndBox" class="actions hidden singleAction">
+              <button id="btnEnd" class="btn btn-danger" type="button">إنهاء الجولة</button>
+            </div>
+          </div>
+        </div>
       </div>
-      <div id="firstQuestion" class="firstQuestion">—</div>
-    </div>
-
-    <div class="timerBox">
-      <div class="timerLabel">المؤقّت</div>
-      <div id="timerValue" class="timerValue">—</div>
-      <div class="hint">   تيك تااااااك تيك تااااااك  تيك تااااااك تيك تااااااك  </div>
-    </div>
-
-    <div class="card muted inner">
-      <div class="row spread">
-        <div class="pill">اللاعبون والتصويت</div>
-        <div id="voteSummaryPill" class="pill">—</div>
-      </div>
-      <div id="voteBanner" class="voteBanner hidden">—</div>
-      <div id="playError" class="error" role="alert" aria-live="polite"></div>
-      <div id="playPlayersList" class="listBox playersBoard">—</div>
-    </div>
-
-    <div class="actions">
-      <button id="btnTogglePlayCard" class="btn btn-secondary" type="button">إظهار بطاقتي</button>
-    </div>
-
-    <div id="playCardBox" class="revealBox hidden"></div>
-
-    <div id="hostEndBox" class="actions hidden">
-      <button id="btnEnd" class="btn btn-danger" type="button">إنهاء الجولة</button>
-    </div>
-  </div>
-</section>
+    </section>
 
     <!-- END -->
     <section id="screenEnd" class="screen hidden">
@@ -319,7 +340,7 @@
   </main>
 
   <footer class="footer">
-    <div>© لعبة الجاسوس — Multiplayer حقوق النشر محفوظة في الثلاجة</div>
+    <div>© لعبة الجاسوس — Multiplayer</div>
   </footer>
 
   <script type="module" src="./src/main.js"></script>

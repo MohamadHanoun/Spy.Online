@@ -2,6 +2,7 @@ export const $ = (s) => document.querySelector(s);
 
 export const screens = {
   home: $("#screenHome"),
+  create: $("#screenCreateRoom"),
   lobby: $("#screenLobby"),
   card: $("#screenCard"),
   play: $("#screenPlay"),

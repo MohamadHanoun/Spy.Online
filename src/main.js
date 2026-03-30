@@ -12,19 +12,30 @@ import {
 } from "./api.js";
 import { SPY_DATA } from "./data.js";
 import { buildPool, pickWordAvoidingRecent, pickSpies, pickFirstQuestion } from "./game.js";
+import { GAME_MODES, LOL_MODE_KEY, getModeDefinition, getModeLabel, pickRandomLolSkinRound } from "./lol.js";
+
+const DEFAULT_CLASSIC_CATEGORIES = ["places", "foods", "animals", "objects", "countries", "video_games"];
 
 const el = {
   // home
   nameInput: $("#nameInput"),
   roomCodeInput: $("#roomCodeInput"),
-  btnCreateRoom: $("#btnCreateRoom"),
+  btnOpenCreateRoom: $("#btnOpenCreateRoom"),
   btnJoinRoom: $("#btnJoinRoom"),
   homeError: $("#homeError"),
-  homeCategoryList: $("#homeCategoryList"),
-  homeTargetPlayers: $("#homeTargetPlayers"),
-  homeSpiesCount: $("#homeSpiesCount"),
-  homeRoundMinutes: $("#homeRoundMinutes"),
-  homeSpyTeammatesVisible: $("#homeSpyTeammatesVisible"),
+
+  // create room
+  btnBackHome: $("#btnBackHome"),
+  btnCreateRoomConfirm: $("#btnCreateRoomConfirm"),
+  createError: $("#createError"),
+  createModeList: $("#createModeList"),
+  createModeHint: $("#createModeHint"),
+  createClassicFields: $("#createClassicFields"),
+  createCategoryList: $("#createCategoryList"),
+  createTargetPlayers: $("#createTargetPlayers"),
+  createSpiesCount: $("#createSpiesCount"),
+  createRoundMinutes: $("#createRoundMinutes"),
+  createSpyTeammatesVisible: $("#createSpyTeammatesVisible"),
 
   // top
   btnLeave: $("#btnLeave"),
@@ -38,22 +49,33 @@ const el = {
   statusHint: $("#statusHint"),
   metaInfo: $("#metaInfo"),
   saveState: $("#saveState"),
+  lobbyHostPanel: $("#lobbyHostPanel"),
   hostBox: $("#hostBox"),
   btnStart: $("#btnStart"),
   lobbyError: $("#lobbyError"),
+  lobbyModeList: $("#lobbyModeList"),
+  lobbyModeHint: $("#lobbyModeHint"),
+  lobbyClassicFields: $("#lobbyClassicFields"),
   lobbyCategoryList: $("#lobbyCategoryList"),
   lobbyTargetPlayers: $("#lobbyTargetPlayers"),
   lobbySpiesCount: $("#lobbySpiesCount"),
   lobbyRoundMinutes: $("#lobbyRoundMinutes"),
   lobbySpyTeammatesVisible: $("#lobbySpyTeammatesVisible"),
+  publicModeView: $("#publicModeView"),
+  publicPlayersView: $("#publicPlayersView"),
+  publicSpiesView: $("#publicSpiesView"),
+  publicTimeView: $("#publicTimeView"),
+  publicCategoriesView: $("#publicCategoriesView"),
 
   // card
+  roundModeBadge: $("#roundModeBadge"),
   cardCover: $("#cardCover"),
   btnRevealCard: $("#btnRevealCard"),
   cardBox: $("#cardBox"),
   btnGoPlay: $("#btnGoPlay"),
 
   // play
+  playHint: $("#playHint"),
   firstQuestion: $("#firstQuestion"),
   timerValue: $("#timerValue"),
   hostEndBox: $("#hostEndBox"),
@@ -102,8 +124,9 @@ async function boot() {
   const last = loadLast();
   if (last?.code) el.roomCodeInput.value = last.code;
 
-  initHomeDefaultsUI();
+  initCreateDefaultsUI();
   wire();
+  applyLeaveButtonState();
 
   await ensureAnonAuth();
   onUid((id) => {
@@ -125,17 +148,29 @@ async function boot() {
 function wire() {
   el.nameInput.addEventListener("input", () => saveName(el.nameInput.value.trim()));
 
-  el.btnCreateRoom.addEventListener("click", async () => {
-    try {
-      setText(el.homeError, "");
-      const name = (el.nameInput.value || "").trim();
-      if (!name) return setText(el.homeError, "اكتب اسمك أولاً.");
+  el.btnOpenCreateRoom.addEventListener("click", () => {
+    setText(el.homeError, "");
+    const name = (el.nameInput.value || "").trim();
+    if (!name) return setText(el.homeError, "اكتب اسمك أولًا.");
+    showScreen("create");
+  });
 
-      const settings = readHomeDefaults();
+  el.btnBackHome.addEventListener("click", () => {
+    setText(el.createError, "");
+    showScreen("home");
+  });
+
+  el.btnCreateRoomConfirm.addEventListener("click", async () => {
+    try {
+      setText(el.createError, "");
+      const name = (el.nameInput.value || "").trim();
+      if (!name) return setText(el.createError, "اكتب اسمك أولًا.");
+
+      const settings = readCreateDefaults();
       const newCode = await createRoomFlow(settings);
       await joinFlow(newCode, name, false);
     } catch (err) {
-      setText(el.homeError, "تعذّر إنشاء الغرفة الآن.");
+      setText(el.createError, "تعذر إنشاء الغرفة الآن.");
       console.error(err);
     }
   });
@@ -145,11 +180,11 @@ function wire() {
       setText(el.homeError, "");
       const name = (el.nameInput.value || "").trim();
       const c = (el.roomCodeInput.value || "").trim().toUpperCase();
-      if (!name) return setText(el.homeError, "اكتب اسمك أولاً.");
+      if (!name) return setText(el.homeError, "اكتب اسمك أولًا.");
       if (!c) return setText(el.homeError, "اكتب كود الغرفة.");
       await joinFlow(c, name, false);
     } catch (err) {
-      if (!el.homeError.textContent) setText(el.homeError, "تعذّر الانضمام الآن.");
+      if (!el.homeError.textContent) setText(el.homeError, "تعذر الانضمام الآن.");
       console.error(err);
     }
   });
@@ -158,6 +193,7 @@ function wire() {
 
   el.btnLeave.addEventListener("click", async () => {
     await leaveFlow();
+    applyLeaveButtonState();
     showScreen("home");
   });
 
@@ -189,7 +225,7 @@ function wire() {
     try {
       await hostKickPlayer(code, targetUid);
     } catch (err) {
-      setText(el.lobbyError, "تعذّر طرد اللاعب الآن.");
+      setText(el.lobbyError, "تعذر طرد اللاعب الآن.");
       console.error(err);
     }
   });
@@ -202,7 +238,7 @@ function wire() {
       try {
         await hostKickPlayer(code, targetUid);
       } catch (err) {
-        setText(el.playError, "تعذّر طرد اللاعب الآن.");
+        setText(el.playError, "تعذر طرد اللاعب الآن.");
         console.error(err);
       }
       return;
@@ -216,55 +252,106 @@ function wire() {
   });
 }
 
-function initHomeDefaultsUI() {
+function initCreateDefaultsUI() {
   const def = normalizeSettings(loadHostDefaults() || {
-    categories: ["places", "foods", "animals", "objects", "countries", "video_games"],
+    modeKey: "classic",
+    categories: DEFAULT_CLASSIC_CATEGORIES,
     targetPlayers: 0,
     spiesCount: 1,
     roundMinutes: 8,
     spyTeammatesVisible: false,
   });
 
-  renderCategoryChips(el.homeCategoryList, def.categories, (cats) => {
-    const next = normalizeSettings({ ...readHomeDefaults(), categories: cats });
+  renderModeChoices(el.createModeList, def.modeKey, (modeKey) => {
+    toggleCreateModeSections(modeKey);
+    setText(el.createModeHint, getModeDefinition(modeKey).description || "");
+    saveHostDefaults(normalizeSettings({ ...readCreateDefaults(), modeKey }));
+  });
+
+  renderCategoryChips(el.createCategoryList, def.categories, (cats) => {
+    const next = normalizeSettings({ ...readCreateDefaults(), categories: cats });
     saveHostDefaults(next);
   });
 
-  el.homeTargetPlayers.value = String(def.targetPlayers ?? 0);
-  el.homeSpiesCount.value = String(def.spiesCount ?? 1);
-  el.homeRoundMinutes.value = String(def.roundMinutes ?? 8);
-  el.homeSpyTeammatesVisible.checked = !!def.spyTeammatesVisible;
+  el.createTargetPlayers.value = String(def.targetPlayers ?? 0);
+  el.createSpiesCount.value = String(def.spiesCount ?? 1);
+  el.createRoundMinutes.value = String(def.roundMinutes ?? 8);
+  el.createSpyTeammatesVisible.checked = !!def.spyTeammatesVisible;
+
+  toggleCreateModeSections(def.modeKey);
+  setText(el.createModeHint, getModeDefinition(def.modeKey).description || "");
 
   const persistDefaults = debounce(() => {
-    saveHostDefaults(readHomeDefaults());
+    saveHostDefaults(readCreateDefaults());
   }, 250);
 
-  el.homeTargetPlayers.addEventListener("input", persistDefaults);
-  el.homeSpiesCount.addEventListener("input", persistDefaults);
-  el.homeRoundMinutes.addEventListener("input", persistDefaults);
-  el.homeSpyTeammatesVisible.addEventListener("change", persistDefaults);
+  el.createTargetPlayers.addEventListener("input", persistDefaults);
+  el.createSpiesCount.addEventListener("input", persistDefaults);
+  el.createRoundMinutes.addEventListener("input", persistDefaults);
+  el.createSpyTeammatesVisible.addEventListener("change", persistDefaults);
 }
 
-function readHomeDefaults() {
-  const categories = getCheckedCategories(el.homeCategoryList);
+function readCreateDefaults() {
+  const modeKey = getSelectedMode(el.createModeList) || "classic";
+  const categories = getCheckedCategories(el.createCategoryList);
   return normalizeSettings({
+    modeKey,
     categories,
-    targetPlayers: toInt(el.homeTargetPlayers.value, 0),
-    spiesCount: toInt(el.homeSpiesCount.value, 1),
-    roundMinutes: toInt(el.homeRoundMinutes.value, 8),
-    spyTeammatesVisible: !!el.homeSpyTeammatesVisible.checked,
+    targetPlayers: toInt(el.createTargetPlayers.value, 0),
+    spiesCount: toInt(el.createSpiesCount.value, 1),
+    roundMinutes: toInt(el.createRoundMinutes.value, 8),
+    spyTeammatesVisible: !!el.createSpyTeammatesVisible.checked,
   });
 }
 
 function normalizeSettings(s) {
-  const categories = Array.isArray(s?.categories) && s.categories.length ? s.categories : ["places"];
+  const modeKey = s?.modeKey === LOL_MODE_KEY ? LOL_MODE_KEY : "classic";
+  const categories = Array.isArray(s?.categories) ? s.categories.filter(Boolean) : DEFAULT_CLASSIC_CATEGORIES;
   return {
+    modeKey,
     categories,
     targetPlayers: Math.max(0, toInt(s?.targetPlayers, 0)),
     spiesCount: Math.max(0, toInt(s?.spiesCount, 1)),
     roundMinutes: Math.max(0, toInt(s?.roundMinutes, 8)),
     spyTeammatesVisible: !!s?.spyTeammatesVisible,
   };
+}
+
+function renderModeChoices(container, selected, onChange) {
+  if (!container) return;
+  container.innerHTML = "";
+
+  for (const mode of GAME_MODES) {
+    const id = `${container.id}_${mode.key}`;
+    const wrap = document.createElement("label");
+    wrap.className = "modeOption";
+    wrap.setAttribute("for", id);
+
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.name = `${container.id}_group`;
+    input.id = id;
+    input.value = mode.key;
+    input.checked = mode.key === selected;
+    input.addEventListener("change", () => {
+      if (input.checked) onChange(mode.key);
+    });
+
+    const card = document.createElement("span");
+    card.className = "modeCard";
+    card.innerHTML = `
+      <span class="modeCardTitle">${escapeHtml(mode.label)}</span>
+      <span class="modeCardDesc">${escapeHtml(mode.description)}</span>
+    `;
+
+    wrap.appendChild(input);
+    wrap.appendChild(card);
+    container.appendChild(wrap);
+  }
+}
+
+function getSelectedMode(container) {
+  return container?.querySelector('input[type="radio"]:checked')?.value || "classic";
 }
 
 function renderCategoryChips(container, selected, onChange) {
@@ -302,6 +389,17 @@ function getCheckedCategories(container) {
     .map((x) => x.value);
 }
 
+function toggleCreateModeSections(modeKey) {
+  el.createClassicFields?.classList.toggle("hidden", modeKey !== "classic");
+}
+
+function toggleLobbyModeSections(modeKey) {
+  el.lobbyClassicFields?.classList.toggle("hidden", modeKey !== "classic");
+}
+
+function applyLeaveButtonState() {
+  el.btnLeave?.classList.toggle("hidden", !code);
+}
 async function createRoomFlow(settings) {
   for (let i = 0; i < 14; i += 1) {
     const c = genRoomCode(6);
@@ -332,6 +430,7 @@ async function joinFlow(roomCode, name, isAutoRejoin) {
 
   code = roomCode;
   saveLast({ code, name });
+  applyLeaveButtonState();
   startSubs(code);
   showScreen("lobby");
 }
@@ -360,11 +459,13 @@ async function leaveFlow() {
   }
 
   clearLast();
+  applyLeaveButtonState();
 }
 
 function startSubs(roomCode) {
   stopSubs();
   wasMemberSeen = false;
+  applyLeaveButtonState();
   setText(el.roomCodeView, roomCode);
   setText(el.playError, "");
   setText(el.lobbyError, "");
@@ -492,6 +593,7 @@ function stopResultsSub() {
 }
 
 function updateHostUI() {
+  el.lobbyHostPanel.classList.toggle("hidden", !isHost);
   el.hostBox.classList.toggle("hidden", !isHost);
   el.hostEndBox.classList.toggle("hidden", !isHost);
   el.hostNewRoundBox.classList.toggle("hidden", !isHost);
@@ -508,7 +610,7 @@ function renderLobbyPlayers() {
           : "";
         return `
           <div class="playerRow">
-            <div class="playerInfo">
+            <div class="playerInfo grow">
               <div class="playerNameLine">
                 <span class="playerName">${escapeHtml(p.name || "بدون اسم")}</span>
                 ${badges.join(" ")}
@@ -581,33 +683,54 @@ function renderPlayPlayers() {
   }
 }
 
+function renderLobbyPublicSummary(settings) {
+  const n = players.length;
+  setText(el.publicModeView, getModeLabel(settings.modeKey));
+  setText(el.publicPlayersView, settings.targetPlayers > 0 ? `${n} / ${settings.targetPlayers}` : `${n}`);
+  setText(el.publicSpiesView, String(settings.spiesCount || 0));
+  setText(el.publicTimeView, settings.roundMinutes > 0 ? `${settings.roundMinutes} دقيقة` : "بدون مؤقت");
+  if (settings.modeKey === LOL_MODE_KEY) {
+    setText(el.publicCategoriesView, "League of Legends — جولة صور سكنات");
+  } else {
+    const labels = settings.categories
+      .map((key) => SPY_DATA.categories.find((c) => c.key === key)?.label || key)
+      .join("، ");
+    setText(el.publicCategoriesView, labels || "—");
+  }
+}
+
 function renderStatus() {
   if (!room) return;
 
   const st = room.status;
   const n = players.length;
+  const s = normalizeSettings(room.settings || {});
+  const modeLabel = getModeLabel(s.modeKey);
 
   if (st === RoomStatus.LOBBY) {
     setText(el.statusPill, "Lobby");
-    setText(el.statusTitle, "بانتظار…");
-    setText(el.statusHint, n >= 2 ? "جاهزين؟ الهوست يضغط ابدأ." : "بدنا لاعبين 2 أو أكثر.");
+    setText(el.statusTitle, "بانتظار بدء الجولة");
+    setText(el.statusHint, n >= 2 ? `المود الحالي: ${modeLabel}. الهوست يضغط ابدأ عندما تكتمل المجموعة.` : "نحتاج لاعبين 2 أو أكثر.");
   } else if (st === RoomStatus.PLAYING) {
     setText(el.statusPill, "Playing");
-    setText(el.statusTitle, "الجولة شغّالة");
-    setText(el.statusHint, "الأسماء والتصويت ظاهرون للجميع أثناء الجولة.");
+    setText(el.statusTitle, "الجولة شغالة");
+    setText(el.statusHint, `المود الحالي: ${modeLabel}. الأسماء والتصويت ظاهرون للجميع أثناء الجولة.`);
   } else {
     setText(el.statusPill, "Ended");
     setText(el.statusTitle, "انتهت الجولة");
-    setText(el.statusHint, "تم كشف النتائج النهائية.");
+    setText(el.statusHint, `تم كشف النتائج النهائية لمود ${modeLabel}.`);
   }
 
-  const s = normalizeSettings(room.settings || {});
-  const meta = `لاعبين: ${n} | مطلوب: ${s.targetPlayers || "—"} | جواسيس: ${s.spiesCount} | وقت: ${s.roundMinutes}د | يعرفون بعض: ${s.spyTeammatesVisible ? "نعم" : "لا"}`;
+  renderLobbyPublicSummary(s);
+  updateRoundContext(s.modeKey);
+  setText(el.roundModeBadge, modeLabel);
+
+  const meta = `لاعبين: ${n} | مطلوب: ${s.targetPlayers || "—"} | جواسيس: ${s.spiesCount} | وقت: ${s.roundMinutes > 0 ? `${s.roundMinutes}د` : "—"} | يعرفون بعض: ${s.spyTeammatesVisible ? "نعم" : "لا"}`;
   setText(el.metaInfo, meta);
 
   const canStart = isHost && st === RoomStatus.LOBBY && n >= 2 && (s.targetPlayers <= 0 || n === s.targetPlayers);
   el.btnStart.disabled = !canStart;
-  setText(el.saveState, isHost ? "✅ الإعدادات محفوظة" : "👀 للعرض فقط");
+  setText(el.saveState, isHost ? "✅ إعدادات الهوست فقط" : "👀 عرض مختصر فقط");
 }
 
 function route() {
@@ -648,6 +771,7 @@ function wireLobbySettingsWrites() {
     if (!isHost || !code || !room || room.status !== RoomStatus.LOBBY) return;
 
     const settings = normalizeSettings({
+      modeKey: getSelectedMode(el.lobbyModeList),
       categories: getCheckedCategories(el.lobbyCategoryList),
       targetPlayers: toInt(el.lobbyTargetPlayers.value, 0),
       spiesCount: toInt(el.lobbySpiesCount.value, 0),
@@ -655,8 +779,8 @@ function wireLobbySettingsWrites() {
       spyTeammatesVisible: !!el.lobbySpyTeammatesVisible.checked,
     });
 
-    if (!settings.categories.length) {
-      setText(el.lobbyError, "اختَر فئة واحدة على الأقل.");
+    if (settings.modeKey === "classic" && !settings.categories.length) {
+      setText(el.lobbyError, "اختر فئة واحدة على الأقل.");
       return;
     }
 
@@ -664,9 +788,10 @@ function wireLobbySettingsWrites() {
     await updateRoomSettings(code, settings);
   }, 400);
 
-  if (el.lobbyCategoryList.dataset.bound === "1") return;
-  el.lobbyCategoryList.dataset.bound = "1";
+  if (el.lobbyModeList.dataset.bound === "1") return;
+  el.lobbyModeList.dataset.bound = "1";
 
+  el.lobbyModeList.addEventListener("change", saveToRoomDebounced);
   el.lobbyCategoryList.addEventListener("change", saveToRoomDebounced);
   el.lobbyTargetPlayers.addEventListener("input", saveToRoomDebounced);
   el.lobbySpiesCount.addEventListener("input", saveToRoomDebounced);
@@ -678,6 +803,10 @@ function hydrateLobbySettingsFromRoom() {
   if (!room) return;
 
   const s = normalizeSettings(room.settings || loadHostDefaults() || {});
+  renderModeChoices(el.lobbyModeList, s.modeKey, (modeKey) => {
+    toggleLobbyModeSections(modeKey);
+    setText(el.lobbyModeHint, getModeDefinition(modeKey).description || "");
+  });
   renderCategoryChips(el.lobbyCategoryList, s.categories, () => {});
 
   const editable = isHost && room.status === RoomStatus.LOBBY;
@@ -689,11 +818,16 @@ function hydrateLobbySettingsFromRoom() {
   Array.from(el.lobbyCategoryList.querySelectorAll('input[type="checkbox"]')).forEach((x) => {
     x.disabled = !editable;
   });
+  Array.from(el.lobbyModeList.querySelectorAll('input[type="radio"]')).forEach((x) => {
+    x.disabled = !editable;
+  });
 
   el.lobbyTargetPlayers.value = String(s.targetPlayers ?? 0);
   el.lobbySpiesCount.value = String(s.spiesCount ?? 0);
   el.lobbyRoundMinutes.value = String(s.roundMinutes ?? 0);
   el.lobbySpyTeammatesVisible.checked = !!s.spyTeammatesVisible;
+  toggleLobbyModeSections(s.modeKey);
+  setText(el.lobbyModeHint, getModeDefinition(s.modeKey).description || "");
 }
 
 async function startRound() {
@@ -701,35 +835,57 @@ async function startRound() {
   if (!isHost || !code || !room) return;
 
   const n = players.length;
-  if (n < 2) return setText(el.lobbyError, "بدنا لاعبين 2 أو أكثر.");
+  if (n < 2) return setText(el.lobbyError, "نحتاج لاعبين 2 أو أكثر.");
 
   const s = normalizeSettings(room.settings || {});
   if (s.targetPlayers > 0 && n !== s.targetPlayers) {
-    return setText(el.lobbyError, `عدد اللاعبين الحالي ${n} لازم يطابق المطلوب ${s.targetPlayers}.`);
+    return setText(el.lobbyError, `عدد اللاعبين الحالي ${n} يجب أن يطابق المطلوب ${s.targetPlayers}.`);
   }
 
   if (s.spiesCount <= 0) {
-    return setText(el.lobbyError, "عدد الجواسيس لازم يكون 1 أو أكثر.");
+    return setText(el.lobbyError, "عدد الجواسيس يجب أن يكون 1 أو أكثر.");
   }
 
   if (s.spiesCount >= n) {
-    return setText(el.lobbyError, "عدد الجواسيس لازم يكون أقل من عدد اللاعبين.");
+    return setText(el.lobbyError, "عدد الجواسيس يجب أن يكون أقل من عدد اللاعبين.");
   }
 
-  const pool = buildPool(s.categories);
-  if (!pool.length) return setText(el.lobbyError, "ما في كلمات ضمن الفئات المختارة.");
-
-  const chosen = pickWordAvoidingRecent(pool, 15);
   const spiesUids = pickSpies(players.map((p) => p.uid), s.spiesCount);
   const fq = pickFirstQuestion(players.map((p) => p.uid));
+
+  let roundPayload = {
+    word: "",
+    categoryLabel: "",
+    roundMode: s.modeKey,
+    roundData: null,
+    categoryKeys: s.modeKey === "classic" ? s.categories : [],
+  };
+
+  if (s.modeKey === LOL_MODE_KEY) {
+    try {
+      const lolRound = await pickRandomLolSkinRound();
+      roundPayload.roundData = lolRound;
+    } catch (err) {
+      console.error(err);
+      return setText(el.lobbyError, "تعذر تحميل بيانات سكنات League of Legends الآن.");
+    }
+  } else {
+    const pool = buildPool(s.categories);
+    if (!pool.length) return setText(el.lobbyError, "لا توجد كلمات ضمن الفئات المختارة.");
+    const chosen = pickWordAvoidingRecent(pool, 15);
+    roundPayload.word = chosen.word;
+    roundPayload.categoryLabel = chosen.categoryLabel;
+  }
 
   await hostStartGame({
     code,
     roundMinutes: s.roundMinutes,
-    categoryKeys: s.categories,
+    categoryKeys: roundPayload.categoryKeys,
     spiesCount: s.spiesCount,
-    word: chosen.word,
-    categoryLabel: chosen.categoryLabel,
+    word: roundPayload.word,
+    categoryLabel: roundPayload.categoryLabel,
+    roundMode: roundPayload.roundMode,
+    roundData: roundPayload.roundData,
     spiesUids,
     firstQuestion: fq,
     spyTeammatesVisible: s.spyTeammatesVisible,
@@ -748,6 +904,14 @@ async function newRound() {
   showScreen("lobby");
 }
 
+function buildLolImageStyle(view = null) {
+  const tx = Number(view?.translateXPercent ?? 0);
+  const ty = Number(view?.translateYPercent ?? 0);
+  const scale = Number(view?.scale ?? 1);
+  const blur = Number(view?.blurPx ?? 0);
+  return `--lol-tx:${tx}%; --lol-ty:${ty}%; --lol-scale:${scale}; --lol-blur:${blur}px;`;
+}
+
 function renderCard(me) {
   if (!me || room?.status !== RoomStatus.PLAYING) {
     return {
@@ -760,6 +924,45 @@ function renderCard(me) {
     return {
       html: `<div class="big">عم نجهّز الدور…</div><div class="small">استنّى شوي</div>`,
       canPlay: false,
+    };
+  }
+
+  const isLolCard = me.cardType === LOL_MODE_KEY && me.lolSkin?.imageUrl;
+
+  if (isLolCard) {
+    if (me.role === "spy") {
+      const partners = Array.isArray(me.spyPartnerNames) && me.spyPartnerNames.length
+        ? `<div class="small">الجواسيس معك: ${escapeHtml(me.spyPartnerNames.join("، "))}</div>`
+        : `<div class="small">أنت الأمبوستر. ترى نفس الصورة الأصلية لكن بجزء محدود ومشوّش.</div>`;
+      return {
+        html: `
+          <div class="lolCard">
+            <div class="big">أنت الأمبوستر 🕵️</div>
+            ${partners}
+            <div class="lolSpyNote">الصورة الأصلية نفسها، لكن العرض هنا يعتمد على Zoom + Blur + Safe Zone فقط.</div>
+            <div class="lolImageFrame spyView">
+              <img class="lolImage" src="${escapeHtml(me.lolSkin.imageUrl)}" alt="League of Legends skin" style="${buildLolImageStyle(me.lolView)}" />
+            </div>
+          </div>
+        `,
+        canPlay: true,
+      };
+    }
+
+    return {
+      html: `
+        <div class="lolCard">
+          <div class="lolMetaBox">
+            <div class="big">أنت لاعب عادي</div>
+            <div class="lolChampionName">${escapeHtml(me.lolSkin.championName || "—")}</div>
+            <div class="lolSkinName">${escapeHtml(me.lolSkin.skinName || "—")}</div>
+          </div>
+          <div class="lolImageFrame">
+            <img class="lolImage" src="${escapeHtml(me.lolSkin.imageUrl)}" alt="${escapeHtml(`${me.lolSkin.championName || ""} ${me.lolSkin.skinName || ""}`)}" style="${buildLolImageStyle(null)}" />
+          </div>
+        </div>
+      `,
+      canPlay: true,
     };
   }
 
@@ -823,6 +1026,16 @@ function renderFirstQuestion(fq) {
   setText(el.firstQuestion, `ابدأوا: ${fromName} يسأل ${toName} أول سؤال.`);
 }
 
+function updateRoundContext(modeKey) {
+  const modeLabel = getModeLabel(modeKey);
+  setText(el.roundModeBadge, modeLabel);
+  if (modeKey === LOL_MODE_KEY) {
+    setText(el.playHint, "اسألوا عن تفاصيل السكن والصورة. الأمبوستر يرى نفس الصورة لكن بشكل محدود.");
+  } else {
+    setText(el.playHint, "ابدأوا الأسئلة، والكل يحاول يكتشف الجاسوس.");
+  }
+}
+
 function startTimer(startedAt, minutes) {
   stopTimer();
 
@@ -868,18 +1081,31 @@ function renderResults(res) {
       ? "الجواسيس"
       : "—";
 
+  const roundMode = res.roundMode === LOL_MODE_KEY ? "League of Legends" : "كلاسيكي";
+  const roundMain = res.roundMode === LOL_MODE_KEY
+    ? `الشخصية: ${res.lolSkin?.championName || "—"}
+السكن: ${res.lolSkin?.skinName || "—"}`
+    : `الكلمة: ${res.word || "—"}
+التصنيف: ${res.categoryLabel || "—"}`;
+
   const txt =
-    `الكلمة: ${res.word || "—"}\n` +
-    `التصنيف: ${res.categoryLabel || "—"}\n` +
-    `الجواسيس: ${spiesNames || "—"}\n` +
-    `الجواسيس الذين انكشفوا: ${foundNames || "—"}\n` +
-    `الفائز: ${winnerText}\n` +
+    `المود: ${roundMode}
+` +
+    `${roundMain}
+` +
+    `الجواسيس: ${spiesNames || "—"}
+` +
+    `الجواسيس الذين انكشفوا: ${foundNames || "—"}
+` +
+    `الفائز: ${winnerText}
+` +
     `رسالة الجولة: ${res.finalMessage || "—"}`;
 
   setText(el.resultsBox, txt);
 }
 
 function getRevealedSet() {
+
   return new Set(Array.isArray(room?.revealedSpyUids) ? room.revealedSpyUids : []);
 }
 
@@ -1080,6 +1306,7 @@ async function handleForcedExit(message) {
   resolvingVote = false;
 
   clearLast();
+  applyLeaveButtonState();
   setText(el.homeError, msg);
   showScreen("home");
 }
