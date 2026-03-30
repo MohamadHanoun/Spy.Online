@@ -175,26 +175,6 @@ function wire() {
       console.error(err);
     }
   });
-  function bindLolImageProtection() {
-  document.addEventListener("contextmenu", (e) => {
-    if (e.target.closest(".lolProtected")) {
-      e.preventDefault();
-    }
-  });
-
-  document.addEventListener("dragstart", (e) => {
-    if (e.target.closest(".lolProtected")) {
-      e.preventDefault();
-    }
-  });
-
-  document.addEventListener("selectstart", (e) => {
-    if (e.target.closest(".lolProtected")) {
-      e.preventDefault();
-    }
-  });
-}
-
 
   el.btnJoinRoom.addEventListener("click", async () => {
     try {
@@ -270,6 +250,26 @@ function wire() {
     const targetUid = voteBtn.dataset.voteTarget;
     if (!targetUid) return;
     await toggleVoteForTarget(targetUid);
+  });
+}
+
+function bindLolImageProtection() {
+  document.addEventListener("contextmenu", (e) => {
+    if (e.target.closest(".lolProtected")) {
+      e.preventDefault();
+    }
+  });
+
+  document.addEventListener("dragstart", (e) => {
+    if (e.target.closest(".lolProtected")) {
+      e.preventDefault();
+    }
+  });
+
+  document.addEventListener("selectstart", (e) => {
+    if (e.target.closest(".lolProtected")) {
+      e.preventDefault();
+    }
   });
 }
 
@@ -421,6 +421,7 @@ function toggleLobbyModeSections(modeKey) {
 function applyLeaveButtonState() {
   el.btnLeave?.classList.toggle("hidden", !code);
 }
+
 async function createRoomFlow(settings) {
   for (let i = 0; i < 14; i += 1) {
     const c = genRoomCode(6);
@@ -476,7 +477,11 @@ async function leaveFlow() {
   resolvingVote = false;
 
   if (oldCode && oldUid) {
-    try { await leaveRoom(oldCode, oldUid); } catch (err) { console.error(err); }
+    try {
+      await leaveRoom(oldCode, oldUid);
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   clearLast();
@@ -579,7 +584,9 @@ function startSubs(roomCode) {
 
 function stopSubs() {
   Object.values(unsub).forEach((u) => {
-    try { u?.(); } catch {}
+    try {
+      u?.();
+    } catch {}
   });
   unsub = { room: null, players: null, my: null, results: null, votes: null, secret: null };
 }
@@ -587,17 +594,23 @@ function stopSubs() {
 function syncHostSecretSub() {
   if (!code) return;
   if (isHost && !unsub.secret) {
-    unsub.secret = subHostSecret(code, (secret) => {
-      hostSecret = secret;
-      maybeResolveVotes();
-    }, () => {
-      hostSecret = null;
-    });
+    unsub.secret = subHostSecret(
+      code,
+      (secret) => {
+        hostSecret = secret;
+        maybeResolveVotes();
+      },
+      () => {
+        hostSecret = null;
+      }
+    );
     return;
   }
 
   if (!isHost && unsub.secret) {
-    try { unsub.secret(); } catch {}
+    try {
+      unsub.secret();
+    } catch {}
     unsub.secret = null;
     hostSecret = null;
   }
@@ -609,7 +622,9 @@ function ensureResultsSub() {
 }
 
 function stopResultsSub() {
-  try { unsub.results?.(); } catch {}
+  try {
+    unsub.results?.();
+  } catch {}
   unsub.results = null;
 }
 
@@ -987,7 +1002,7 @@ function renderCard(me) {
             <div class="lolChampionName">${escapeHtml(me.lolSkin.championName || "—")}</div>
             <div class="lolSkinName">${escapeHtml(me.lolSkin.skinName || "—")}</div>
           </div>
-          <div class="lolImageFrame">
+          <div class="lolImageFrame lolProtected">
             <div class="lolImageVisual" style="${buildLolImageStyle(me.lolSkin.imageUrl, null)}" aria-label="${escapeHtml(`${me.lolSkin.championName || ""} ${me.lolSkin.skinName || ""}`)}"></div>
             <div class="lolImageShield" aria-hidden="true"></div>
           </div>
@@ -1121,22 +1136,16 @@ function renderResults(res) {
 
   const txt =
     `المود: ${roundMode}
-` +
-    `${roundMain}
-` +
-    `الجواسيس: ${spiesNames || "—"}
-` +
-    `الجواسيس الذين انكشفوا: ${foundNames || "—"}
-` +
-    `الفائز: ${winnerText}
-` +
-    `رسالة الجولة: ${res.finalMessage || "—"}`;
+${roundMain}
+الجواسيس: ${spiesNames || "—"}
+الجواسيس الذين انكشفوا: ${foundNames || "—"}
+الفائز: ${winnerText}
+رسالة الجولة: ${res.finalMessage || "—"}`;
 
   setText(el.resultsBox, txt);
 }
 
 function getRevealedSet() {
-
   return new Set(Array.isArray(room?.revealedSpyUids) ? room.revealedSpyUids : []);
 }
 
@@ -1253,7 +1262,6 @@ async function toggleVoteForTarget(targetUid) {
   }
 }
 
-
 async function maybeSyncRoundStateFromPlayers() {
   if (!isHost || !code || !room || room.status !== RoomStatus.PLAYING || !hostSecret) return;
 
@@ -1270,7 +1278,7 @@ async function maybeSyncRoundStateFromPlayers() {
   if (nextActiveSpyCount === 0 && !room.voteStopped) {
     patch.voteStopped = true;
     patch.roundWinner = "civilians";
-    patch.voteMessage = "لم يعد هناك جواسيس نشطون في الغرفة. المدنيون فازوا، والهوست يعرض النتائج يدويًا.";
+    patch.voteMessage = "لم يعد هناك جواسيس نشطون في الغرفة. المدنيون فازوا ";
     patch.voteMessageType = "success";
   }
 

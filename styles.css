@@ -934,3 +934,580 @@ h2{ font-size: 16px; }
     font-size: 15px;
   }
 }
+:root{
+  --bg-1:#030b1f;
+  --bg-2:#07142f;
+  --panel:#091a3b;
+  --panel-soft:rgba(10,22,52,.78);
+  --panel-2:rgba(13,27,61,.92);
+  --stroke:rgba(88,126,214,.18);
+  --stroke-strong:rgba(106,155,255,.34);
+  --text:#f4f7ff;
+  --muted:#b8c6ea;
+  --muted-2:#8da2d3;
+  --primary:#5b7cff;
+  --primary-2:#7b5cff;
+  --danger:#ff5f7f;
+  --success:#1ecf8b;
+  --shadow-lg:0 18px 60px rgba(0,0,0,.38);
+  --shadow-md:0 10px 30px rgba(0,0,0,.28);
+  --radius-xl:28px;
+  --radius-lg:22px;
+  --radius-md:16px;
+  --radius-sm:12px;
+}
+
+body{
+  background:
+    radial-gradient(circle at top right, rgba(82, 107, 255, .18), transparent 32%),
+    radial-gradient(circle at top left, rgba(0, 194, 255, .10), transparent 26%),
+    linear-gradient(135deg, var(--bg-1), var(--bg-2) 55%, #0a1140);
+  color:var(--text);
+}
+
+/* تحسين العناصر العامة */
+input,
+select,
+textarea{
+  background:rgba(6,16,40,.88);
+  color:var(--text);
+  border:1px solid rgba(87,116,190,.18);
+  border-radius:16px;
+  padding:14px 16px;
+  transition:border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+}
+
+input:focus,
+select:focus,
+textarea:focus{
+  outline:none;
+  border-color:rgba(103,146,255,.5);
+  box-shadow:0 0 0 4px rgba(91,124,255,.12);
+}
+
+button{
+  transition:transform .16s ease, box-shadow .16s ease, opacity .16s ease, border-color .16s ease;
+}
+
+button:hover{
+  transform:translateY(-1px);
+}
+
+button:active{
+  transform:translateY(0);
+}
+
+/* الأزرار */
+.btn{
+  border-radius:16px;
+  border:1px solid rgba(98,131,212,.18);
+  box-shadow:var(--shadow-md);
+  font-weight:700;
+  letter-spacing:.1px;
+}
+
+.btn-primary{
+  background:linear-gradient(135deg, var(--primary), var(--primary-2));
+  color:#fff;
+  border-color:rgba(144,173,255,.25);
+}
+
+.btn-primary:hover{
+  box-shadow:0 14px 34px rgba(88,112,255,.28);
+}
+
+.btn-secondary{
+  background:rgba(17,31,68,.92);
+  color:var(--text);
+  border-color:rgba(92,119,188,.22);
+}
+
+.btn-ghost{
+  background:rgba(255,255,255,.03);
+  color:var(--text);
+  border-color:rgba(95,122,188,.18);
+}
+
+.btn-danger{
+  background:linear-gradient(135deg, #c73b67, #ff5f7f);
+  color:#fff;
+  border-color:rgba(255,144,170,.18);
+}
+
+.btn-small{
+  border-radius:12px;
+  padding:10px 12px;
+  font-size:13px;
+}
+
+/* صناديق الواجهة */
+#createError,
+#homeError,
+#lobbyError,
+#playError{
+  margin-top:10px;
+  color:#ffb6c6;
+}
+
+#metaInfo,
+#saveState,
+#resultsBox,
+#cardBox,
+#playCardBox{
+  background:linear-gradient(180deg, rgba(10,21,49,.88), rgba(8,16,39,.92));
+  border:1px solid var(--stroke);
+  border-radius:20px;
+  box-shadow:var(--shadow-md);
+}
+
+#resultsBox,
+#cardBox,
+#playCardBox{
+  padding:18px;
+}
+
+/* اللوبي */
+#lobbyHostPanel,
+#hostBox{
+  background:linear-gradient(180deg, rgba(8,20,48,.92), rgba(8,16,38,.96));
+  border:1px solid var(--stroke);
+  border-radius:24px;
+  box-shadow:var(--shadow-lg);
+}
+
+#playersList,
+#playPlayersList{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.playerRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:14px 16px;
+  background:linear-gradient(180deg, rgba(13,26,59,.94), rgba(10,20,48,.94));
+  border:1px solid rgba(82,111,183,.16);
+  border-radius:18px;
+  box-shadow:0 10px 25px rgba(0,0,0,.18);
+}
+
+.playerRow.boardRow{
+  align-items:flex-start;
+}
+
+.playerRow.is-revealed{
+  border-color:rgba(255,95,127,.34);
+  box-shadow:0 0 0 1px rgba(255,95,127,.18), 0 12px 30px rgba(0,0,0,.18);
+}
+
+.playerInfo{
+  min-width:0;
+}
+
+.playerNameLine{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-bottom:4px;
+}
+
+.playerName{
+  font-size:16px;
+  font-weight:800;
+  color:#fff;
+  overflow-wrap:anywhere;
+}
+
+.playerSub{
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.7;
+  overflow-wrap:anywhere;
+}
+
+.playerActionsInline{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.playerBadge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:28px;
+  padding:4px 10px;
+  border-radius:999px;
+  background:rgba(21,40,86,.92);
+  border:1px solid rgba(102,134,214,.18);
+  color:#dce6ff;
+  font-size:12px;
+  font-weight:700;
+}
+
+.playerBadge.self{
+  background:rgba(62,95,200,.24);
+  border-color:rgba(112,145,255,.28);
+}
+
+.playerBadge.spyX{
+  background:rgba(255,95,127,.18);
+  border-color:rgba(255,95,127,.34);
+  color:#ffd6df;
+}
+
+/* خيارات المود */
+.modeOption{
+  display:block;
+}
+
+.modeOption input{
+  position:absolute;
+  opacity:0;
+  pointer-events:none;
+}
+
+.modeCard{
+  display:block;
+  padding:18px;
+  border-radius:20px;
+  background:linear-gradient(180deg, rgba(11,24,56,.96), rgba(9,19,43,.96));
+  border:1px solid rgba(85,113,188,.14);
+  box-shadow:var(--shadow-md);
+  transition:transform .16s ease, border-color .16s ease, box-shadow .16s ease, background .16s ease;
+  cursor:pointer;
+}
+
+.modeCard:hover{
+  transform:translateY(-2px);
+  border-color:rgba(111,152,255,.28);
+}
+
+.modeCardTitle{
+  display:block;
+  font-size:19px;
+  font-weight:900;
+  margin-bottom:8px;
+  color:#fff;
+}
+
+.modeCardDesc{
+  display:block;
+  color:var(--muted);
+  line-height:1.8;
+  font-size:14px;
+}
+
+.modeOption input:checked + .modeCard{
+  border-color:rgba(120,162,255,.55);
+  box-shadow:0 0 0 1px rgba(123,163,255,.34), 0 16px 38px rgba(0,0,0,.24);
+  background:linear-gradient(180deg, rgba(15,31,70,.98), rgba(10,22,50,.98));
+}
+
+/* الفئات */
+.chip{
+  display:inline-flex;
+  align-items:center;
+  margin:4px;
+}
+
+.chip input{
+  position:absolute;
+  opacity:0;
+  pointer-events:none;
+}
+
+.chip span{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:40px;
+  padding:10px 14px;
+  border-radius:999px;
+  background:rgba(13,25,57,.94);
+  border:1px solid rgba(84,111,180,.16);
+  color:var(--muted);
+  font-size:13px;
+  font-weight:700;
+  transition:all .16s ease;
+}
+
+.chip input:checked + span{
+  background:rgba(75,109,233,.18);
+  border-color:rgba(110,149,255,.34);
+  color:#eef3ff;
+  box-shadow:0 0 0 1px rgba(112,146,255,.14);
+}
+
+/* صندوق البطاقة */
+.lolCard{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+
+.lolMetaBox{
+  padding:16px 18px;
+  border-radius:20px;
+  background:linear-gradient(180deg, rgba(11,25,57,.92), rgba(9,18,43,.92));
+  border:1px solid rgba(86,116,194,.16);
+}
+
+.lolChampionName{
+  margin-top:8px;
+  font-size:22px;
+  font-weight:900;
+  color:#ffffff;
+  line-height:1.4;
+  overflow-wrap:anywhere;
+}
+
+.lolSkinName{
+  margin-top:4px;
+  font-size:15px;
+  color:#d1dcff;
+  line-height:1.7;
+  overflow-wrap:anywhere;
+}
+
+.lolSpyNote{
+  padding:12px 14px;
+  border-radius:16px;
+  background:rgba(23,35,72,.72);
+  border:1px solid rgba(95,128,205,.14);
+  color:var(--muted);
+  line-height:1.8;
+  font-size:14px;
+}
+
+.lolImageFrame{
+  position:relative;
+  width:100%;
+  min-height:360px;
+  border-radius:24px;
+  overflow:hidden;
+  border:1px solid rgba(84,115,191,.22);
+  background:
+    linear-gradient(180deg, rgba(8,18,42,.95), rgba(8,16,37,.98));
+  box-shadow:0 20px 50px rgba(0,0,0,.28);
+}
+
+.lolImageVisual{
+  width:100%;
+  height:100%;
+  min-height:360px;
+  background-repeat:no-repeat;
+  background-position:center center;
+  background-size:cover;
+  transform:translate(var(--lol-tx, 0%), var(--lol-ty, 0%)) scale(var(--lol-scale, 1));
+  filter:blur(var(--lol-blur, 0px));
+  transform-origin:center center;
+  pointer-events:none;
+  user-select:none;
+  -webkit-user-drag:none;
+}
+
+.lolImageShield{
+  position:absolute;
+  inset:0;
+  background:transparent;
+}
+
+.lolImageFrame.spyView{
+  border-color:rgba(126,147,255,.28);
+  box-shadow:0 0 0 1px rgba(103,129,240,.12), 0 20px 50px rgba(0,0,0,.30);
+}
+
+/* ملاحظات ونصوص عامة */
+.hint{
+  color:var(--muted);
+  line-height:1.8;
+}
+
+.big{
+  font-size:30px;
+  font-weight:900;
+  color:#fff;
+  line-height:1.35;
+  overflow-wrap:anywhere;
+}
+
+.small{
+  color:var(--muted);
+  line-height:1.8;
+  font-size:14px;
+  overflow-wrap:anywhere;
+}
+
+/* بانر التصويت */
+#voteBanner{
+  border-radius:16px;
+  padding:12px 14px;
+  border:1px solid rgba(92,118,190,.18);
+  background:rgba(13,24,56,.92);
+  line-height:1.8;
+}
+
+#voteBanner[data-type="success"]{
+  background:rgba(19,71,55,.42);
+  border-color:rgba(30,207,139,.28);
+  color:#cff8e7;
+}
+
+#voteBanner[data-type="danger"]{
+  background:rgba(88,22,40,.42);
+  border-color:rgba(255,95,127,.28);
+  color:#ffd0da;
+}
+
+/* كروت الملخص */
+#publicModeView,
+#publicPlayersView,
+#publicSpiesView,
+#publicTimeView,
+#publicCategoriesView{
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+
+/* تحسينات للموبايل */
+@media (max-width: 900px){
+  .big{
+    font-size:24px;
+  }
+
+  .lolChampionName{
+    font-size:20px;
+  }
+
+  .playerRow{
+    flex-direction:column;
+    align-items:stretch;
+  }
+
+  .playerActionsInline{
+    width:100%;
+    justify-content:flex-start;
+  }
+
+  .playerActionsInline .btn{
+    flex:1 1 140px;
+  }
+
+  .lolImageFrame,
+  .lolImageVisual{
+    min-height:280px;
+  }
+
+  #resultsBox,
+  #cardBox,
+  #playCardBox{
+    padding:16px;
+  }
+}
+
+@media (max-width: 640px){
+  .big{
+    font-size:21px;
+  }
+
+  .small,
+  .playerSub,
+  .modeCardDesc{
+    font-size:13px;
+  }
+
+  .modeCard{
+    padding:15px;
+    border-radius:18px;
+  }
+
+  .playerRow{
+    padding:12px 13px;
+    border-radius:16px;
+  }
+
+  .lolMetaBox{
+    padding:14px;
+    border-radius:16px;
+  }
+
+  .lolSpyNote{
+    padding:10px 12px;
+    border-radius:14px;
+  }
+
+  .lolImageFrame,
+  .lolImageVisual{
+    min-height:230px;
+    border-radius:18px;
+  }
+
+  .btn{
+    min-height:46px;
+  }
+
+  .btn-small{
+    min-height:40px;
+  }
+
+  input,
+  select,
+  textarea{
+    padding:12px 14px;
+    border-radius:14px;
+  }
+}
+:root{
+  --accent-cyan:#67e8f9;
+  --accent-cyan-2:#22d3ee;
+  --accent-cyan-soft:rgba(103,232,249,.16);
+  --accent-cyan-border:rgba(103,232,249,.48);
+  --accent-cyan-glow:rgba(34,211,238,.28);
+}
+
+/* الفئات المختارة */
+.chip input:checked + span{
+  background:linear-gradient(135deg, rgba(8,58,78,.96), rgba(10,78,92,.94));
+  border-color:var(--accent-cyan-border);
+  color:#f2feff;
+  box-shadow:
+    0 0 0 1px rgba(103,232,249,.20),
+    0 10px 24px rgba(0,0,0,.18),
+    0 0 18px var(--accent-cyan-glow);
+}
+
+/* المود المختار */
+.modeOption input:checked + .modeCard{
+  border-color:var(--accent-cyan-border);
+  background:linear-gradient(180deg, rgba(7,41,58,.98), rgba(6,28,42,.98));
+  box-shadow:
+    0 0 0 1px rgba(103,232,249,.24),
+    0 16px 38px rgba(0,0,0,.24),
+    0 0 24px var(--accent-cyan-glow);
+}
+
+/* الهوفر */
+.modeCard:hover{
+  border-color:rgba(103,232,249,.34);
+}
+
+/* شارة "أنت" */
+.playerBadge.self{
+  background:rgba(103,232,249,.14);
+  border-color:rgba(103,232,249,.30);
+  color:#eefdff;
+}
+
+/* تحسين النص */
+.chip span,
+.modeCardTitle,
+.modeCardDesc{
+  text-shadow:0 1px 0 rgba(0,0,0,.18);
+}
