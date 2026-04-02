@@ -1921,8 +1921,6 @@ body.modalOpen{
   .endInfoRow{ flex-direction:column; align-items:flex-start; }
   .endInfoValue{ text-align:right; }
 }
-<<<<<<< HEAD
-=======
 
 /* ===== Connection / Custom Mode / Round History ===== */
 .topbarActions{
@@ -2050,4 +2048,3 @@ body.modalOpen{
     align-items:flex-start;
   }
 }
->>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
