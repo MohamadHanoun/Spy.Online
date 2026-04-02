@@ -6,9 +6,9 @@ import {
   RoomStatus,
   roomExists, getRoom, getMyPublicPlayer,
   createRoom, updateRoomSettings, upsertJoin, leaveRoom,
-  subRoom, subPublicPlayers, subMyPrivate, subResults, subVotes, subHostSecret,
+  subRoom, subPublicPlayers, subMyPrivate, subResults, subVotes, subHostSecret, subActivity,
   hostStartGame, hostEndGame, hostNewRound, hostKickPlayer,
-  setMyVotes, clearMyVotes, hostResolveVoteTarget, hostSyncRoundState,
+  setMyVotes, clearMyVotes, hostResolveVoteTarget, hostSyncRoundState, addActivityEvent, getEndReasonLabel,
 } from "./api.js";
 import { SPY_DATA } from "./data.js";
 import { buildPool, pickWordAvoidingRecent, pickSpies, pickFirstQuestion } from "./game.js";
@@ -83,9 +83,17 @@ const el = {
   btnTogglePlayCard: $("#btnTogglePlayCard"),
   playCardBox: $("#playCardBox"),
   playPlayersList: $("#playPlayersList"),
+  playNotice: $("#playNotice"),
   playError: $("#playError"),
   voteSummaryPill: $("#voteSummaryPill"),
   voteBanner: $("#voteBanner"),
+  activityLogList: $("#activityLogList"),
+  activityLogEmpty: $("#activityLogEmpty"),
+  confirmModal: $("#confirmModal"),
+  confirmTitle: $("#confirmTitle"),
+  confirmText: $("#confirmText"),
+  btnConfirmAction: $("#btnConfirmAction"),
+  btnCancelAction: $("#btnCancelAction"),
 
   // end
   resultsBox: $("#resultsBox"),
@@ -106,6 +114,13 @@ let playCardVisible = false;
 let timerId = null;
 let wasMemberSeen = false;
 let resolvingVote = false;
+let activities = [];
+let currentResults = null;
+let playNoticeTimer = null;
+let confirmResolver = null;
+let lastFocusedBeforeConfirm = null;
+let autoEndingRound = false;
+const actionLocks = new Map();
 
 let unsub = {
   room: null,
@@ -114,9 +129,20 @@ let unsub = {
   results: null,
   votes: null,
   secret: null,
+  activity: null,
 };
 
 boot();
+
+async function ensureUidReady() {
+  if (uid) return uid;
+
+  const user = await ensureAnonAuth();
+  uid = user?.uid ?? null;
+
+  if (!uid) throw new Error("Anonymous auth is not ready yet");
+  return uid;
+}
 
 async function boot() {
   el.nameInput.value = loadName();
@@ -129,13 +155,16 @@ async function boot() {
   bindLolImageProtection();
   applyLeaveButtonState();
 
-  await ensureAnonAuth();
+  const user = await ensureAnonAuth();
+  uid = user?.uid ?? null;
+
   onUid((id) => {
     uid = id;
   });
 
   if (last?.code && last?.name) {
     try {
+      await ensureUidReady();
       await joinFlow(last.code, last.name, true);
       return;
     } catch {
@@ -167,6 +196,8 @@ function wire() {
       const name = (el.nameInput.value || "").trim();
       if (!name) return setText(el.createError, "اكتب اسمك أولًا.");
 
+      await ensureUidReady();
+
       const settings = readCreateDefaults();
       const newCode = await createRoomFlow(settings);
       await joinFlow(newCode, name, false);
@@ -183,6 +214,8 @@ function wire() {
       const c = (el.roomCodeInput.value || "").trim().toUpperCase();
       if (!name) return setText(el.homeError, "اكتب اسمك أولًا.");
       if (!c) return setText(el.homeError, "اكتب كود الغرفة.");
+
+      await ensureUidReady();
       await joinFlow(c, name, false);
     } catch (err) {
       if (!el.homeError.textContent) setText(el.homeError, "تعذر الانضمام الآن.");
@@ -193,14 +226,35 @@ function wire() {
   el.btnCopyCode.addEventListener("click", () => safeCopy(el.roomCodeView.textContent || ""));
 
   el.btnLeave.addEventListener("click", async () => {
-    await leaveFlow();
-    applyLeaveButtonState();
-    showScreen("home");
+    try {
+      const confirmed = await openConfirmModal({
+        title: "تأكيد المغادرة",
+        text: "هل أنت متأكد أنك تريد مغادرة الغرفة؟ سيتم خروجك من الجولة الحالية.",
+        confirmText: "مغادرة",
+        cancelText: "إلغاء",
+        confirmVariant: "danger",
+      });
+      if (!confirmed) return;
+
+      await leaveFlow();
+      applyLeaveButtonState();
+      showScreen("home");
+    } catch (err) {
+      console.error(err);
+    }
   });
 
   el.btnStart.addEventListener("click", () => startRound());
   el.btnEnd.addEventListener("click", () => endRound());
   el.btnNewRound.addEventListener("click", () => newRound());
+  el.btnCancelAction?.addEventListener("click", () => closeConfirmModal(false));
+  el.btnConfirmAction?.addEventListener("click", () => closeConfirmModal(true));
+  el.confirmModal?.addEventListener("click", (e) => {
+    if (e.target?.dataset?.closeConfirm === "1") closeConfirmModal(false);
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && confirmResolver) closeConfirmModal(false);
+  });
 
   el.btnRevealCard.addEventListener("click", () => {
     el.cardCover.classList.add("hidden");
@@ -223,25 +277,22 @@ function wire() {
     if (!btn || !isHost || !code) return;
     const targetUid = btn.dataset.kickUid;
     if (!targetUid || targetUid === uid) return;
-    try {
-      await hostKickPlayer(code, targetUid);
-    } catch (err) {
-      setText(el.lobbyError, "تعذر طرد اللاعب الآن.");
-      console.error(err);
-    }
+    await requestKickConfirmation(targetUid, "lobby");
   });
 
   el.playPlayersList?.addEventListener("click", async (e) => {
+    const askBtn = e.target.closest("button[data-ask-target]");
+    if (askBtn) {
+      const targetUid = askBtn.dataset.askTarget;
+      if (targetUid) await requestQuestionConfirmation(targetUid);
+      return;
+    }
+
     const kickBtn = e.target.closest("button[data-play-kick-uid]");
     if (kickBtn && isHost && code) {
       const targetUid = kickBtn.dataset.playKickUid;
       if (!targetUid || targetUid === uid) return;
-      try {
-        await hostKickPlayer(code, targetUid);
-      } catch (err) {
-        setText(el.playError, "تعذر طرد اللاعب الآن.");
-        console.error(err);
-      }
+      await requestKickConfirmation(targetUid, "play");
       return;
     }
 
@@ -275,6 +326,291 @@ function bindLolImageProtection() {
       e.preventDefault();
     }
   });
+}
+
+function openConfirmModal({
+  title = "تأكيد",
+  text = "هل أنت متأكد؟",
+  confirmText = "تأكيد",
+  cancelText = "إلغاء",
+  confirmVariant = "danger",
+} = {}) {
+  if (!el.confirmModal || !el.btnConfirmAction || !el.btnCancelAction) {
+    return Promise.resolve(window.confirm(text));
+  }
+
+  if (confirmResolver) {
+    closeConfirmModal(false);
+  }
+
+  lastFocusedBeforeConfirm = document.activeElement instanceof HTMLElement
+    ? document.activeElement
+    : null;
+
+  setText(el.confirmTitle, title);
+  setText(el.confirmText, text);
+  setText(el.btnConfirmAction, confirmText);
+  setText(el.btnCancelAction, cancelText);
+
+  el.btnConfirmAction.classList.remove("btn-danger", "btn-primary", "btn-secondary", "btn-ghost");
+  el.btnConfirmAction.classList.add(confirmVariant === "primary" ? "btn-primary" : "btn-danger");
+
+  el.confirmModal.classList.remove("hidden");
+  el.confirmModal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("modalOpen");
+
+  window.setTimeout(() => {
+    el.btnCancelAction?.focus();
+  }, 0);
+
+  return new Promise((resolve) => {
+    confirmResolver = resolve;
+  });
+}
+
+function closeConfirmModal(confirmed) {
+  if (!el.confirmModal) return;
+
+  const active = document.activeElement;
+  if (active instanceof HTMLElement && el.confirmModal.contains(active)) {
+    active.blur();
+  }
+
+  el.confirmModal.classList.add("hidden");
+  el.confirmModal.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("modalOpen");
+
+  const restoreTarget = lastFocusedBeforeConfirm;
+  lastFocusedBeforeConfirm = null;
+
+  if (restoreTarget instanceof HTMLElement && document.contains(restoreTarget)) {
+    window.setTimeout(() => {
+      restoreTarget.focus();
+    }, 0);
+  }
+
+  const resolver = confirmResolver;
+  confirmResolver = null;
+  resolver?.(!!confirmed);
+}
+
+function showPlayNotice(message, type = "success") {
+  if (!el.playNotice) return;
+  if (playNoticeTimer) window.clearTimeout(playNoticeTimer);
+
+  el.playNotice.dataset.type = type;
+  setText(el.playNotice, message || "");
+  el.playNotice.classList.toggle("hidden", !message);
+
+  if (!message) return;
+  playNoticeTimer = window.setTimeout(() => {
+    el.playNotice.classList.add("hidden");
+    el.playNotice.dataset.type = "";
+    setText(el.playNotice, "");
+  }, 2200);
+}
+
+function clearPlayNotice() {
+  if (playNoticeTimer) window.clearTimeout(playNoticeTimer);
+  playNoticeTimer = null;
+  if (!el.playNotice) return;
+  el.playNotice.classList.add("hidden");
+  el.playNotice.dataset.type = "";
+  setText(el.playNotice, "");
+}
+
+function lockAction(key, ms = 1500) {
+  const until = Date.now() + ms;
+  actionLocks.set(key, until);
+  window.setTimeout(() => {
+    if ((actionLocks.get(key) || 0) <= Date.now()) {
+      actionLocks.delete(key);
+      renderLobbyPlayers();
+      renderPlayPlayers();
+    }
+  }, ms + 30);
+}
+
+function isActionLocked(key) {
+  const until = actionLocks.get(key) || 0;
+  if (!until) return false;
+  if (until <= Date.now()) {
+    actionLocks.delete(key);
+    return false;
+  }
+  return true;
+}
+
+function hashString(value) {
+  const str = String(value || "");
+  let hash = 0;
+  for (let i = 0; i < str.length; i += 1) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+function getPlayerColor(playerUid) {
+  const hue = hashString(playerUid) % 360;
+  return `hsl(${hue} 82% 66%)`;
+}
+
+function getPlayerName(playerUid) {
+  return uidToName.get(playerUid) || "بدون اسم";
+}
+
+function getQuestionEvents() {
+  return activities.filter((item) => item.type === "question" && item.targetUid);
+}
+
+function getQuestionStatsMap() {
+  const map = new Map();
+  for (const event of getQuestionEvents()) {
+    const current = map.get(event.targetUid) || { count: 0, actorUids: [] };
+    current.count += 1;
+    current.actorUids.push(event.actorUid || "");
+    map.set(event.targetUid, current);
+  }
+  return map;
+}
+
+function getOrderedPlayPlayers(questionData) {
+  return [...players].sort((a, b) => {
+    const aRevealed = getRevealedSet().has(a.uid) ? 1 : 0;
+    const bRevealed = getRevealedSet().has(b.uid) ? 1 : 0;
+    if (aRevealed !== bRevealed) return aRevealed - bRevealed;
+
+    const aCount = questionData.get(a.uid)?.count || 0;
+    const bCount = questionData.get(b.uid)?.count || 0;
+    if (bCount !== aCount) return bCount - aCount;
+
+    const aJoined = Number(a.joinedAtMs || 0);
+    const bJoined = Number(b.joinedAtMs || 0);
+    if (aJoined !== bJoined) return aJoined - bJoined;
+
+    return String(a.name || "").localeCompare(String(b.name || ""), "ar");
+  });
+}
+
+function renderQuestionMarks(actorUids = []) {
+  if (!actorUids.length) return "";
+  const visible = actorUids.slice(0, 10);
+  const extra = Math.max(0, actorUids.length - visible.length);
+  return `
+    <div class="questionMarks" aria-label="من سأل هذا اللاعب">
+      ${visible.map((actorUid) => `
+        <span
+          class="questionMark"
+          style="--mark-color:${escapeHtml(getPlayerColor(actorUid || 'x'))}"
+          title="${escapeHtml(getPlayerName(actorUid))}"
+        ></span>
+      `).join("")}
+      ${extra ? `<span class="questionMore">+${extra}</span>` : ""}
+    </div>
+  `;
+}
+
+function renderActivityLog() {
+  if (!el.activityLogList || !el.activityLogEmpty) return;
+
+  if (!activities.length) {
+    setHtml(el.activityLogList, "");
+    el.activityLogEmpty.classList.remove("hidden");
+    return;
+  }
+
+  el.activityLogEmpty.classList.add("hidden");
+  const html = activities.map((item) => `
+    <div class="activityItem" data-type="${escapeHtml(item.type || 'info')}">
+      <div class="activityText">${escapeHtml(item.text || '—')}</div>
+    </div>
+  `).join("");
+
+  setHtml(el.activityLogList, html);
+}
+
+function canCurrentUserAskTarget(targetUid) {
+  if (!uid || !targetUid || targetUid === uid) return false;
+  if (room?.status !== RoomStatus.PLAYING || room?.voteStopped) return false;
+  if (!myPrivateData || myPrivateData.role === "pending") return false;
+  const revealedSet = getRevealedSet();
+  if (revealedSet.has(uid) || revealedSet.has(targetUid)) return false;
+  return true;
+}
+
+async function requestQuestionConfirmation(targetUid) {
+  try {
+    setText(el.playError, "");
+    if (!code || !canCurrentUserAskTarget(targetUid)) return;
+
+    const actionKey = `ask:${targetUid}`;
+    if (isActionLocked(actionKey)) return;
+
+    const targetName = getPlayerName(targetUid);
+    const confirmed = await openConfirmModal({
+      title: "تأكيد السؤال",
+      text: `هل أنت متأكد أنك سألت ${targetName}؟ لا يمكن التراجع بعد الضغط على تأكيد.`,
+      confirmText: "تأكيد",
+      cancelText: "إلغاء",
+      confirmVariant: "primary",
+    });
+    if (!confirmed) return;
+
+    lockAction(actionKey, 1600);
+    await addActivityEvent(code, {
+      type: "question",
+      text: `${getPlayerName(uid)} سأل ${targetName}.`,
+      actorUid: uid,
+      actorName: getPlayerName(uid),
+      targetUid,
+      targetName,
+    });
+    showPlayNotice("تم تسجيل السؤال.");
+  } catch (err) {
+    setText(el.playError, "تعذر تسجيل السؤال الآن.");
+    console.error(err);
+  }
+}
+
+async function requestKickConfirmation(targetUid, context = "play") {
+  try {
+    const errorEl = context === "lobby" ? el.lobbyError : el.playError;
+    setText(errorEl, "");
+    if (!isHost || !code || !targetUid || targetUid === uid) return;
+
+    const actionKey = `kick:${targetUid}`;
+    if (isActionLocked(actionKey)) return;
+
+    const targetName = getPlayerName(targetUid);
+    const confirmed = await openConfirmModal({
+      title: "تأكيد الطرد",
+      text: `هل أنت متأكد أنك تريد طرد ${targetName} من الغرفة؟ لا يمكن التراجع بعد الضغط على تأكيد.`,
+      confirmText: "تأكيد",
+      cancelText: "إلغاء",
+      confirmVariant: "danger",
+    });
+    if (!confirmed) return;
+
+    lockAction(actionKey, 1800);
+    await hostKickPlayer(code, targetUid);
+
+    if (room?.status === RoomStatus.PLAYING) {
+      await addActivityEvent(code, {
+        type: "kick",
+        text: `تم طرد اللاعب ${targetName} من الغرفة.`,
+        actorUid: uid,
+        actorName: getPlayerName(uid),
+        targetUid,
+        targetName,
+      });
+      showPlayNotice(`تم طرد ${targetName}.`, "info");
+    }
+  } catch (err) {
+    const errorEl = context === "lobby" ? el.lobbyError : el.playError;
+    setText(errorEl, "تعذر طرد اللاعب الآن.");
+    console.error(err);
+  }
 }
 
 function initCreateDefaultsUI() {
@@ -474,11 +810,16 @@ async function leaveFlow() {
   players = [];
   votes = [];
   hostSecret = null;
+  activities = [];
+  currentResults = null;
   uidToName = new Map();
   myPrivateData = null;
   playCardVisible = false;
   wasMemberSeen = false;
   resolvingVote = false;
+  autoEndingRound = false;
+  actionLocks.clear();
+  clearPlayNotice();
 
   if (oldCode && oldUid) {
     try {
@@ -494,11 +835,16 @@ async function leaveFlow() {
 
 function startSubs(roomCode) {
   stopSubs();
+  activities = [];
+  currentResults = null;
   wasMemberSeen = false;
+  autoEndingRound = false;
   applyLeaveButtonState();
   setText(el.roomCodeView, roomCode);
   setText(el.playError, "");
   setText(el.lobbyError, "");
+  clearPlayNotice();
+  renderActivityLog();
 
   unsub.room = subRoom(
     roomCode,
@@ -534,6 +880,7 @@ function startSubs(roomCode) {
       renderPlayPlayers();
       renderStatus();
       renderVoteMeta();
+      renderResults(currentResults);
       route();
       maybeSyncRoundStateFromPlayers();
       maybeResolveVotes();
@@ -582,6 +929,21 @@ function startSubs(roomCode) {
     }
   );
 
+  unsub.activity = subActivity(
+    roomCode,
+    (list) => {
+      activities = list;
+      renderPlayPlayers();
+      renderActivityLog();
+      renderResults(currentResults);
+    },
+    () => {
+      activities = [];
+      renderActivityLog();
+      renderResults(currentResults);
+    }
+  );
+
   unsub.results = null;
   wireLobbySettingsWrites();
 }
@@ -592,7 +954,7 @@ function stopSubs() {
       u?.();
     } catch {}
   });
-  unsub = { room: null, players: null, my: null, results: null, votes: null, secret: null };
+  unsub = { room: null, players: null, my: null, results: null, votes: null, secret: null, activity: null };
 }
 
 function syncHostSecretSub() {
@@ -622,7 +984,10 @@ function syncHostSecretSub() {
 
 function ensureResultsSub() {
   if (!code || unsub.results) return;
-  unsub.results = subResults(code, (res) => renderResults(res));
+  unsub.results = subResults(code, (res) => {
+    currentResults = res;
+    renderResults(currentResults);
+  });
 }
 
 function stopResultsSub() {
@@ -630,6 +995,7 @@ function stopResultsSub() {
     unsub.results?.();
   } catch {}
   unsub.results = null;
+  currentResults = null;
 }
 
 function updateHostUI() {
@@ -645,13 +1011,15 @@ function renderLobbyPlayers() {
         const badges = [];
         if (room?.hostUid === p.uid) badges.push('<span class="playerBadge">هوست</span>');
         if (p.uid === uid) badges.push('<span class="playerBadge self">أنت</span>');
+        const lockKey = `kick:${p.uid}`;
         const kickBtn = isHost && p.uid !== uid
-          ? `<button class="btn btn-danger btn-small" type="button" data-kick-uid="${escapeHtml(p.uid)}">طرد</button>`
+          ? `<button class="btn btn-danger btn-small" type="button" data-kick-uid="${escapeHtml(p.uid)}" ${isActionLocked(lockKey) ? "disabled" : ""}>طرد</button>`
           : "";
         return `
-          <div class="playerRow">
+          <div class="playerRow" style="--player-accent:${escapeHtml(getPlayerColor(p.uid))}">
             <div class="playerInfo grow">
               <div class="playerNameLine">
+                <span class="playerNameAccent" aria-hidden="true"></span>
                 <span class="playerName">${escapeHtml(p.name || "بدون اسم")}</span>
                 ${badges.join(" ")}
               </div>
@@ -672,20 +1040,28 @@ function renderPlayPlayers() {
   const myTargets = getMyTargets();
   const myVoteSlots = getVoteSlots();
   const voteData = getVoteCountMap();
+  const questionData = getQuestionStatsMap();
   const votingOpen = canCurrentUserVote();
 
-  const html = players.length
-    ? players.map((p) => {
+  const orderedPlayers = getOrderedPlayPlayers(questionData);
+
+  const html = orderedPlayers.length
+    ? orderedPlayers.map((p) => {
         const isRevealed = revealedSet.has(p.uid);
         const isSelf = p.uid === uid;
         const rowVotes = voteData.get(p.uid) || { count: 0, voterNames: [] };
+        const questionInfo = questionData.get(p.uid) || { count: 0, actorUids: [] };
         const selected = myTargets.includes(p.uid);
         const canToggle = !isSelf && !isRevealed && votingOpen;
+        const canAsk = canCurrentUserAskTarget(p.uid);
         const voteBtn = canToggle
           ? `<button class="btn ${selected ? "btn-danger" : "btn-secondary"} btn-small" type="button" data-vote-target="${escapeHtml(p.uid)}">${selected ? "إلغاء الصوت" : "تصويت"}</button>`
           : "";
-        const kickBtn = isHost && !isSelf
-          ? `<button class="btn btn-ghost btn-small" type="button" data-play-kick-uid="${escapeHtml(p.uid)}">طرد</button>`
+        const askBtn = canAsk
+          ? `<button class="btn btn-primary btn-small" type="button" data-ask-target="${escapeHtml(p.uid)}" ${isActionLocked(`ask:${p.uid}`) ? "disabled" : ""}>سألته</button>`
+          : "";
+        const kickBtn = isHost && !isSelf && room?.status === RoomStatus.PLAYING && !room?.voteStopped
+          ? `<button class="btn btn-ghost btn-small" type="button" data-play-kick-uid="${escapeHtml(p.uid)}" ${isActionLocked(`kick:${p.uid}`) ? "disabled" : ""}>طرد</button>`
           : "";
         const badges = [];
         if (isSelf) badges.push('<span class="playerBadge self">أنت</span>');
@@ -693,9 +1069,10 @@ function renderPlayPlayers() {
         if (isRevealed) badges.push('<span class="playerBadge spyX">X</span>');
 
         return `
-          <div class="playerRow boardRow ${isRevealed ? "is-revealed" : ""}">
+          <div class="playerRow boardRow ${isRevealed ? "is-revealed" : ""}" style="--player-accent:${escapeHtml(getPlayerColor(p.uid))}">
             <div class="playerInfo grow">
               <div class="playerNameLine">
+                <span class="playerNameAccent" aria-hidden="true"></span>
                 <span class="playerName">${escapeHtml(p.name || "بدون اسم")}</span>
                 ${badges.join(" ")}
               </div>
@@ -703,9 +1080,14 @@ function renderPlayPlayers() {
                 ${isRevealed ? "تم كشفه كجاسوس" : `الأصوات عليه: <strong>${rowVotes.count}</strong>`}
                 ${rowVotes.voterNames.length ? ` — ${escapeHtml(rowVotes.voterNames.join("، "))}` : ""}
               </div>
+              <div class="playerQuestionMeta">
+                <span class="playerStatPill">انسأل: ${questionInfo.count}</span>
+                ${renderQuestionMarks(questionInfo.actorUids)}
+              </div>
             </div>
             <div class="playerActionsInline">
               ${voteBtn}
+              ${askBtn}
               ${kickBtn}
             </div>
           </div>
@@ -779,6 +1161,7 @@ function route() {
   if (room.status === RoomStatus.LOBBY) {
     stopResultsSub();
     stopTimer();
+    autoEndingRound = false;
     playCardVisible = false;
     renderPlayCard();
     renderPlayPlayers();
@@ -792,6 +1175,7 @@ function route() {
     startTimer(room.startedAt, room.roundMinutes ?? normalizeSettings(room.settings || {}).roundMinutes);
     renderPlayCard();
     renderPlayPlayers();
+    renderActivityLog();
     renderVoteMeta();
     return;
   }
@@ -799,6 +1183,7 @@ function route() {
   if (room.status === RoomStatus.ENDED) {
     ensureResultsSub();
     stopTimer();
+    autoEndingRound = false;
     playCardVisible = false;
     renderPlayCard();
     renderVoteMeta();
@@ -935,7 +1320,7 @@ async function startRound() {
 
 async function endRound() {
   if (!isHost || !code) return;
-  await hostEndGame(code);
+  await hostEndGame(code, { reason: "host_manual" });
 }
 
 async function newRound() {
@@ -1105,6 +1490,21 @@ function updateRoundContext(modeKey) {
   }
 }
 
+function maybeAutoEndRoundOnTimeout() {
+  if (!isHost || !code || !room || room.status !== RoomStatus.PLAYING) return;
+  if (autoEndingRound) return;
+
+  autoEndingRound = true;
+  hostEndGame(code, {
+    reason: "timeout",
+    roundWinner: room.roundWinner || "spies",
+    finalMessage: "انتهى الوقت. انتهت الجولة تلقائيًا وفاز الجاسوس.",
+  }).catch((err) => {
+    autoEndingRound = false;
+    console.error(err);
+  });
+}
+
 function startTimer(startedAt, minutes) {
   stopTimer();
 
@@ -1124,7 +1524,14 @@ function startTimer(startedAt, minutes) {
     const elapsed = Math.floor((Date.now() - startedMs) / 1000);
     const total = mins * 60;
     const remaining = Math.max(0, total - elapsed);
-    setText(el.timerValue, remaining === 0 ? "انتهى الوقت ⏱️" : formatTime(remaining));
+
+    if (remaining === 0) {
+      setText(el.timerValue, "انتهى الوقت ⏱️");
+      maybeAutoEndRoundOnTimeout();
+      return;
+    }
+
+    setText(el.timerValue, formatTime(remaining));
   };
 
   tick();
@@ -1138,34 +1545,155 @@ function stopTimer() {
 
 function renderResults(res) {
   if (!res) {
-    setText(el.resultsBox, "—");
+    setHtml(el.resultsBox, `<div class="endEmpty">—</div>`);
     return;
   }
 
-  const spiesNames = (res.spiesUids || []).map((id) => uidToName.get(id) || id).join("، ");
-  const foundNames = (res.revealedSpyUids || []).map((id) => uidToName.get(id) || id).join("، ");
+  const spiesNames = (res.spiesUids || []).map((id) => getPlayerName(id)).filter(Boolean);
+  const foundNames = (res.revealedSpyUids || []).map((id) => getPlayerName(id)).filter(Boolean);
+
   const winnerText = res.roundWinner === "civilians"
-    ? "المدنيون"
+    ? "فاز المدنيون"
     : res.roundWinner === "spies"
-      ? "الجواسيس"
-      : "—";
+      ? "فاز الجواسيس"
+      : "لا يوجد فائز واضح";
+
+  const winnerClass = res.roundWinner === "civilians"
+    ? "civilians"
+    : res.roundWinner === "spies"
+      ? "spies"
+      : "neutral";
 
   const roundMode = res.roundMode === LOL_MODE_KEY ? "League of Legends" : "كلاسيكي";
-  const roundMain = res.roundMode === LOL_MODE_KEY
-    ? `الشخصية: ${res.lolSkin?.championName || "—"}
-السكن: ${res.lolSkin?.skinName || "—"}`
-    : `الكلمة: ${res.word || "—"}
-التصنيف: ${res.categoryLabel || "—"}`;
+  const endReasonLabel = res.endReasonLabel || getEndReasonLabel(res.endReason || room?.endReason || "") || "غير محدد";
 
-  const txt =
-    `المود: ${roundMode}
-${roundMain}
-الجواسيس: ${spiesNames || "—"}
-الجواسيس الذين انكشفوا: ${foundNames || "—"}
-الفائز: ${winnerText}
-رسالة الجولة: ${res.finalMessage || "—"}`;
+  const mainWordLabel = res.roundMode === LOL_MODE_KEY ? "الشخصية" : "الكلمة";
+  const mainWordValue = res.roundMode === LOL_MODE_KEY
+    ? (res.lolSkin?.championName || "—")
+    : (res.word || "—");
 
-  setText(el.resultsBox, txt);
+  const secondaryLabel = res.roundMode === LOL_MODE_KEY ? "السكن" : "التصنيف";
+  const secondaryValue = res.roundMode === LOL_MODE_KEY
+    ? (res.lolSkin?.skinName || "—")
+    : (res.categoryLabel || "—");
+
+  const questionEvents = getQuestionEvents().slice().reverse();
+  const questionCounts = new Map();
+  for (const event of questionEvents) {
+    questionCounts.set(event.targetUid, (questionCounts.get(event.targetUid) || 0) + 1);
+  }
+
+  let mostAskedName = "—";
+  let mostAskedCount = 0;
+  for (const [targetUid, count] of questionCounts.entries()) {
+    if (count > mostAskedCount) {
+      mostAskedCount = count;
+      mostAskedName = getPlayerName(targetUid);
+    }
+  }
+
+  const firstQuestionText = room?.firstQuestion?.from && room?.firstQuestion?.to
+    ? `${getPlayerName(room.firstQuestion.from)} سأل ${getPlayerName(room.firstQuestion.to)}`
+    : "—";
+
+  const latestMajorEvent = activities.find((item) => item.type !== "question")?.text || res.finalMessage || "—";
+
+  const spiesHtml = spiesNames.length
+    ? spiesNames.map((name) => `<span class="endTag spy">${escapeHtml(name)}</span>`).join("")
+    : `<span class="endEmpty">لا يوجد</span>`;
+
+  const foundHtml = foundNames.length
+    ? foundNames.map((name) => `<span class="endTag found">${escapeHtml(name)}</span>`).join("")
+    : `<span class="endEmpty">لم يتم كشف أحد</span>`;
+
+  const html = `
+    <div class="endHero endAnimate endDelay1">
+      <div class="endHeroMain ${winnerClass === "spies" ? "winnerSpy" : winnerClass === "civilians" ? "winnerCivil" : ""}">
+        <div class="endWinnerLabel">الفائز النهائي</div>
+        <div class="endWinnerValue ${winnerClass}">${escapeHtml(winnerText)}</div>
+        <p class="endFinalMessage">${escapeHtml(res.finalMessage || "انتهت الجولة.")}</p>
+      </div>
+
+      <div class="endHeroSide">
+        <div class="endBadgeCard endAnimate endDelay2">
+          <div class="endBadgeTitle">المود</div>
+          <div class="endBadgeValue">${escapeHtml(roundMode)}</div>
+        </div>
+
+        <div class="endBadgeCard endAnimate endDelay3">
+          <div class="endBadgeTitle">سبب انتهاء الجولة</div>
+          <div class="endBadgeValue">${escapeHtml(endReasonLabel)}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="endStatsStrip endAnimate endDelay2">
+      <div class="endStat">
+        <div class="endStatLabel">عدد الأسئلة المسجلة</div>
+        <div class="endStatValue">${escapeHtml(String(questionEvents.length))}</div>
+      </div>
+
+      <div class="endStat">
+        <div class="endStatLabel">أول سؤال</div>
+        <div class="endStatValue">${escapeHtml(firstQuestionText)}</div>
+      </div>
+
+      <div class="endStat">
+        <div class="endStatLabel">أكثر لاعب انسأل</div>
+        <div class="endStatValue">${escapeHtml(mostAskedCount ? `${mostAskedName} (${mostAskedCount})` : "—")}</div>
+      </div>
+    </div>
+
+    <div class="endPanels">
+      <div class="endPanel endAnimate endDelay2">
+        <div class="endPanelTitle">معلومات الجولة</div>
+        <div class="endInfoRows">
+          <div class="endInfoRow">
+            <div class="endInfoKey">${escapeHtml(mainWordLabel)}</div>
+            <div class="endInfoValue">${escapeHtml(mainWordValue)}</div>
+          </div>
+          <div class="endInfoRow">
+            <div class="endInfoKey">${escapeHtml(secondaryLabel)}</div>
+            <div class="endInfoValue">${escapeHtml(secondaryValue)}</div>
+          </div>
+          <div class="endInfoRow">
+            <div class="endInfoKey">الفائز</div>
+            <div class="endInfoValue">${escapeHtml(winnerText)}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="endPanel endAnimate endDelay3">
+        <div class="endPanelTitle">الجواسيس</div>
+        <div class="endList">${spiesHtml}</div>
+      </div>
+
+      <div class="endPanel endAnimate endDelay4">
+        <div class="endPanelTitle">الذين انكشفوا</div>
+        <div class="endList">${foundHtml}</div>
+      </div>
+
+      <div class="endPanel wide endAnimate endDelay4">
+        <div class="endPanelTitle">ملخص الجولة</div>
+        <div class="endTimeline">
+          <div class="endTimelineItem">
+            <div class="endTimelineDot"></div>
+            <div class="endTimelineText">رسالة الجولة: ${escapeHtml(res.finalMessage || "—")}</div>
+          </div>
+          <div class="endTimelineItem">
+            <div class="endTimelineDot"></div>
+            <div class="endTimelineText">سبب الانتهاء: ${escapeHtml(endReasonLabel)}</div>
+          </div>
+          <div class="endTimelineItem">
+            <div class="endTimelineDot"></div>
+            <div class="endTimelineText">آخر حدث مهم: ${escapeHtml(latestMajorEvent)}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  setHtml(el.resultsBox, html);
 }
 
 function getRevealedSet() {
@@ -1298,15 +1826,24 @@ async function maybeSyncRoundStateFromPlayers() {
   if (nextActiveSpyCount === roomActiveSpyCount) return;
 
   const patch = { activeSpyCount: nextActiveSpyCount };
+  let shouldLogWin = false;
   if (nextActiveSpyCount === 0 && !room.voteStopped) {
     patch.voteStopped = true;
     patch.roundWinner = "civilians";
-    patch.voteMessage = "لم يعد هناك جواسيس نشطون في الغرفة. المدنيون فازوا ";
+    patch.endReason = "no_active_spies";
+    patch.voteMessage = "لم يعد هناك جواسيس نشطون في الغرفة. المدنيون فازوا.";
     patch.voteMessageType = "success";
+    shouldLogWin = true;
   }
 
   try {
     await hostSyncRoundState(code, patch);
+    if (shouldLogWin) {
+      await addActivityEvent(code, {
+        type: "vote-success",
+        text: patch.voteMessage,
+      });
+    }
   } catch (err) {
     console.error(err);
   }
@@ -1361,11 +1898,15 @@ async function handleForcedExit(message) {
   players = [];
   votes = [];
   hostSecret = null;
+  activities = [];
+  currentResults = null;
   uidToName = new Map();
   myPrivateData = null;
   playCardVisible = false;
   wasMemberSeen = false;
   resolvingVote = false;
+  actionLocks.clear();
+  clearPlayNotice();
 
   clearLast();
   applyLeaveButtonState();

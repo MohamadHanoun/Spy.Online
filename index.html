@@ -303,6 +303,7 @@
                 <div id="voteSummaryPill" class="pill">—</div>
               </div>
               <div id="voteBanner" class="voteBanner hidden">—</div>
+              <div id="playNotice" class="notice hidden" role="status" aria-live="polite"></div>
               <div id="playError" class="error" role="alert" aria-live="polite"></div>
               <div id="playPlayersList" class="listBox playersBoard">—</div>
             </div>
@@ -315,6 +316,15 @@
 
             <div id="playCardBox" class="revealBox hidden mobileCardBox"></div>
 
+            <div class="card muted inner activityCard">
+              <div class="row spread mobileStackRow">
+                <div class="pill">سجل الجولة</div>
+                <div class="pill">آخر 50 حدث</div>
+              </div>
+              <div id="activityLogEmpty" class="hint">لم يبدأ السجل بعد.</div>
+              <div id="activityLogList" class="activityLogList"></div>
+            </div>
+
             <div id="hostEndBox" class="actions hidden singleAction">
               <button id="btnEnd" class="btn btn-danger" type="button">إنهاء الجولة</button>
             </div>
@@ -325,19 +335,37 @@
 
     <!-- END -->
     <section id="screenEnd" class="screen hidden">
-      <div class="card">
-        <h1>انتهت الجولة</h1>
-        <div class="endBox">
-          <div class="big">النتيجة</div>
-          <pre id="resultsBox" class="results">—</pre>
+      <div class="card endScreenCard">
+        <div class="endScreenHead">
+          <div>
+            <div class="pill">انتهت الجولة</div>
+            <h1 class="endTitle">النتيجة النهائية</h1>
+            <p class="endSubtitle">ملخص واضح ومرتب للجولة الأخيرة</p>
+          </div>
         </div>
 
-        <div id="hostNewRoundBox" class="actions hidden">
+        <div class="endBox">
+          <div id="resultsBox" class="results resultsGrid">—</div>
+        </div>
+
+        <div id="hostNewRoundBox" class="actions hidden singleAction">
           <button id="btnNewRound" class="btn btn-primary" type="button">جولة جديدة</button>
         </div>
       </div>
     </section>
   </main>
+
+  <div id="confirmModal" class="modal hidden" aria-hidden="true">
+    <div class="modalBackdrop" data-close-confirm="1"></div>
+    <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmText">
+      <div id="confirmTitle" class="modalTitle">تأكيد</div>
+      <div id="confirmText" class="modalText">—</div>
+      <div class="actions modalActions">
+        <button id="btnCancelAction" class="btn btn-ghost" type="button">إلغاء</button>
+        <button id="btnConfirmAction" class="btn btn-danger" type="button">تأكيد</button>
+      </div>
+    </div>
+  </div>
 
   <footer class="footer">
     <div>© لعبة الجاسوس — Multiplayer جميع الحقوق محفوظة في الثلاجة</div>

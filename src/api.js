@@ -1,6 +1,7 @@
 import {
   doc,
   getDoc,
+  getDocs,
   setDoc,
   updateDoc,
   deleteDoc,
@@ -10,6 +11,7 @@ import {
   orderBy,
   serverTimestamp,
   writeBatch,
+  limit,
 } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
 import { db } from "./firebase.js";
@@ -27,7 +29,70 @@ export const refs = {
   hostSecret: (code) => doc(db, "rooms", code, "private", "host"),
   results: (code) => doc(db, "rooms", code, "results", "final"),
   vote: (code, uid) => doc(db, "rooms", code, "votes", uid),
+  activityCol: (code) => collection(db, "rooms", code, "activity"),
 };
+
+function uniqueArray(arr) {
+  return [...new Set((Array.isArray(arr) ? arr : []).filter(Boolean))];
+}
+
+function buildActivityPayload(payload = {}) {
+  return {
+    type: payload.type || "info",
+    text: payload.text || "",
+    actorUid: payload.actorUid || "",
+    actorName: payload.actorName || "",
+    targetUid: payload.targetUid || "",
+    targetName: payload.targetName || "",
+    createdAtMs: Date.now(),
+    createdAt: serverTimestamp(),
+  };
+}
+
+function buildRoundStartText(firstQuestion, players = []) {
+  if (!firstQuestion?.from || !firstQuestion?.to) {
+    return "بدأت الجولة.";
+  }
+
+  const nameByUid = new Map(players.map((p) => [p.uid, p.name || "بدون اسم"]));
+  const fromName = nameByUid.get(firstQuestion.from) || "أحد اللاعبين";
+  const toName = nameByUid.get(firstQuestion.to) || "أحد اللاعبين";
+  return `بدأت الجولة. أول سؤال عشوائي: ${fromName} يسأل ${toName}.`;
+}
+
+export function getEndReasonLabel(reason) {
+  switch (reason) {
+    case "timeout":
+      return "انتهاء الوقت";
+    case "all_spies_found":
+      return "كشف آخر جاسوس";
+    case "wrong_vote":
+      return "تصويت على لاعب ليس جاسوسًا";
+    case "host_manual":
+      return "إنهاء الهوست للجولة";
+    case "no_active_spies":
+      return "لم يعد هناك جواسيس نشطون";
+    default:
+      return "غير محدد";
+  }
+}
+
+export async function clearActivityLog(code) {
+  while (true) {
+    const snap = await getDocs(query(refs.activityCol(code), limit(200)));
+    if (snap.empty) break;
+
+    const batch = writeBatch(db);
+    snap.forEach((activityDoc) => batch.delete(activityDoc.ref));
+    await batch.commit();
+
+    if (snap.size < 200) break;
+  }
+}
+
+export async function addActivityEvent(code, payload = {}) {
+  await setDoc(doc(refs.activityCol(code)), buildActivityPayload(payload));
+}
 
 export async function roomExists(code) {
   const s = await getDoc(refs.room(code));
@@ -61,6 +126,7 @@ export async function createRoom(code, hostUid, settings) {
     voteMessage: "",
     voteMessageType: "",
     roundWinner: "",
+    endReason: "",
   });
 }
 
@@ -172,8 +238,16 @@ export function subHostSecret(code, cb, onError) {
   );
 }
 
-function uniqueArray(arr) {
-  return [...new Set((Array.isArray(arr) ? arr : []).filter(Boolean))];
+export function subActivity(code, cb, onError) {
+  return onSnapshot(
+    query(refs.activityCol(code), orderBy("createdAtMs", "desc"), limit(50)),
+    (snap) => {
+      const list = [];
+      snap.forEach((d) => list.push({ id: d.id, ...(d.data() || {}) }));
+      cb(list);
+    },
+    onError
+  );
 }
 
 export async function setMyVotes(code, uid, targetUids = []) {
@@ -212,6 +286,8 @@ export async function hostStartGame({
   players,
   spyTeammatesVisible,
 }) {
+  await clearActivityLog(code);
+
   const batch = writeBatch(db);
   const lolSkin = roundData?.lolSkin || null;
   const spyImageView = roundData?.spyImageView || null;
@@ -241,7 +317,16 @@ export async function hostStartGame({
     voteMessage: "",
     voteMessageType: "",
     roundWinner: "",
+    endReason: "",
   });
+
+  batch.set(
+    doc(refs.activityCol(code)),
+    buildActivityPayload({
+      type: "round-start",
+      text: buildRoundStartText(firstQuestion, players),
+    })
+  );
 
   for (const p of players) {
     const isSpy = spiesUids.includes(p.uid);
@@ -281,7 +366,7 @@ export async function hostStartGame({
   await batch.commit();
 }
 
-export async function hostEndGame(code) {
+export async function hostEndGame(code, options = {}) {
   const [sec, roomSnap] = await Promise.all([
     getDoc(refs.hostSecret(code)),
     getDoc(refs.room(code)),
@@ -292,25 +377,57 @@ export async function hostEndGame(code) {
 
   const h = sec.data();
   const room = roomSnap.data();
+  const endReason = options.reason || room.endReason || "host_manual";
+  const roundWinner = options.roundWinner || room.roundWinner || "";
+  const finalMessage = options.finalMessage || room.voteMessage || (
+    endReason === "timeout"
+      ? "انتهى الوقت. انتهت الجولة تلقائيًا وفاز الجاسوس."
+      : roundWinner === "civilians"
+        ? "انتهت الجولة. فاز المدنيون."
+        : roundWinner === "spies"
+          ? "انتهت الجولة. فاز الجواسيس."
+          : "قام الهوست بإنهاء الجولة."
+  );
 
-  await setDoc(refs.results(code), {
+  const batch = writeBatch(db);
+
+  batch.set(refs.results(code), {
     roundMode: h.roundMode || "classic",
     word: h.word || "",
     categoryLabel: h.categoryLabel || "",
     lolSkin: h.lolSkin || null,
     spiesUids: Array.isArray(h.spiesUids) ? h.spiesUids : [],
     revealedSpyUids: Array.isArray(room.revealedSpyUids) ? room.revealedSpyUids : [],
-    roundWinner: room.roundWinner || "",
-    finalMessage: room.voteMessage || "",
+    roundWinner,
+    finalMessage,
+    endReason,
+    endReasonLabel: getEndReasonLabel(endReason),
     endedAt: serverTimestamp(),
   });
 
-  await updateDoc(refs.room(code), {
+  batch.update(refs.room(code), {
     status: RoomStatus.ENDED,
+    endReason,
+    roundWinner,
+    voteStopped: true,
+    voteMessage: finalMessage,
+    voteMessageType: roundWinner === "civilians" ? "success" : roundWinner === "spies" ? "danger" : "info",
   });
+
+  batch.set(
+    doc(refs.activityCol(code)),
+    buildActivityPayload({
+      type: "round-end",
+      text: finalMessage,
+    })
+  );
+
+  await batch.commit();
 }
 
 export async function hostNewRound(code, playerUids = [], voteUids = []) {
+  await clearActivityLog(code);
+
   const batch = writeBatch(db);
 
   batch.delete(refs.results(code));
@@ -347,6 +464,7 @@ export async function hostNewRound(code, playerUids = [], voteUids = []) {
     voteMessage: "",
     voteMessageType: "",
     roundWinner: "",
+    endReason: "",
   });
 
   await batch.commit();
@@ -380,29 +498,56 @@ export async function hostResolveVoteTarget(code, targetUid, playerUids = [], vo
     batch.delete(refs.vote(code, uid));
   }
 
+  let voteMessage = "";
+  let voteMessageType = "info";
+  let activityType = "info";
+  let roundWinner = room.roundWinner || "";
+  let voteStopped = room.voteStopped === true;
+  let nextRevealed = revealedSpyUids;
+  let nextActiveSpyCount = Math.max(0, Number(room.activeSpyCount ?? room.spiesCount ?? 0));
+  let endReason = room.endReason || "";
+
   if (isSpy) {
-    const nextRevealed = uniqueArray([...revealedSpyUids, targetUid]);
-    const nextActiveSpyCount = Math.max(0, Number(room.activeSpyCount ?? room.spiesCount ?? 0) - 1);
+    nextRevealed = uniqueArray([...revealedSpyUids, targetUid]);
+    nextActiveSpyCount = Math.max(0, Number(room.activeSpyCount ?? room.spiesCount ?? 0) - 1);
     const isLastSpy = nextActiveSpyCount === 0;
 
-    batch.update(refs.room(code), {
-      revealedSpyUids: nextRevealed,
-      activeSpyCount: nextActiveSpyCount,
-      voteStopped: isLastSpy,
-      voteMessage: isLastSpy
-        ? `تم كشف آخر جاسوس: ${targetName}انتهت الجولة فاز اللاعبون`
-        : `تم كشف جاسوس: ${targetName}.اكملو اللعبة لكشف الجاسوس الأخر`,
-      voteMessageType: isLastSpy ? "success" : "info",
-      roundWinner: isLastSpy ? "civilians" : "",
-    });
+    voteStopped = isLastSpy;
+    roundWinner = isLastSpy ? "civilians" : "";
+    endReason = isLastSpy ? "all_spies_found" : "";
+    voteMessage = isLastSpy
+      ? `تم كشف آخر جاسوس: ${targetName}. انتهت الجولة، فاز اللاعبون.`
+      : `تم كشف جاسوس: ${targetName}. أكملوا اللعبة لكشف الجاسوس الآخر.`;
+    voteMessageType = isLastSpy ? "success" : "info";
+    activityType = "vote-success";
   } else {
-    batch.update(refs.room(code), {
-      voteStopped: true,
-      voteMessage: `اللاعب ${targetName} ليس جاسوسًا. انتهت الجولة`,
-      voteMessageType: "danger",
-      roundWinner: "spies",
-    });
+    voteStopped = true;
+    roundWinner = "spies";
+    endReason = "wrong_vote";
+    voteMessage = `اللاعب ${targetName} ليس جاسوسًا. انتهت الجولة.`;
+    voteMessageType = "danger";
+    activityType = "vote-fail";
   }
+
+  batch.update(refs.room(code), {
+    revealedSpyUids: nextRevealed,
+    activeSpyCount: nextActiveSpyCount,
+    voteStopped,
+    voteMessage,
+    voteMessageType,
+    roundWinner,
+    endReason,
+  });
+
+  batch.set(
+    doc(refs.activityCol(code)),
+    buildActivityPayload({
+      type: activityType,
+      text: voteMessage,
+      targetUid,
+      targetName,
+    })
+  );
 
   await batch.commit();
 }

@@ -69,6 +69,24 @@ service cloud.firestore {
 
         allow delete: if authed() && (voteId == request.auth.uid || isHost());
       }
+
+      match /activity/{eventId} {
+        allow read: if isMember() || isHost();
+
+        allow create: if isHost()
+          || (
+            authed()
+            && isMember()
+            && votesOpen()
+            && request.resource.data.type == "question"
+            && request.resource.data.actorUid == request.auth.uid
+            && request.resource.data.targetUid is string
+            && request.resource.data.targetUid != request.auth.uid
+          );
+
+        allow update: if false;
+        allow delete: if isHost();
+      }
     }
   }
 }
