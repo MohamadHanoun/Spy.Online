@@ -30,10 +30,7 @@ export const refs = {
   results: (code) => doc(db, "rooms", code, "results", "final"),
   vote: (code, uid) => doc(db, "rooms", code, "votes", uid),
   activityCol: (code) => collection(db, "rooms", code, "activity"),
-<<<<<<< HEAD
-=======
   historyCol: (code) => collection(db, "rooms", code, "roundHistory"),
->>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
 };
 
 function uniqueArray(arr) {
@@ -64,8 +61,6 @@ function buildRoundStartText(firstQuestion, players = []) {
   return `بدأت الجولة. أول سؤال عشوائي: ${fromName} يسأل ${toName}.`;
 }
 
-<<<<<<< HEAD
-=======
 function buildRoundPreview(result = {}) {
   if (result.roundMode === "lol_skin") {
     const champion = result.lolSkin?.championName || "—";
@@ -75,7 +70,6 @@ function buildRoundPreview(result = {}) {
   return result.word || "—";
 }
 
->>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
 export function getEndReasonLabel(reason) {
   switch (reason) {
     case "timeout":
@@ -143,10 +137,7 @@ export async function createRoom(code, hostUid, settings) {
     voteMessageType: "",
     roundWinner: "",
     endReason: "",
-<<<<<<< HEAD
-=======
     roundCounter: 0,
->>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
   });
 }
 
@@ -296,8 +287,6 @@ export function subActivity(code, cb, onError) {
     },
     onError
   );
-<<<<<<< HEAD
-=======
 }
 
 export function subRoundHistory(code, cb, onError) {
@@ -310,7 +299,6 @@ export function subRoundHistory(code, cb, onError) {
     },
     onError
   );
->>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
 }
 
 export async function setMyVotes(code, uid, targetUids = []) {
@@ -453,17 +441,10 @@ export async function hostEndGame(code, options = {}) {
           ? "انتهت الجولة. فاز الجواسيس."
           : "قام الهوست بإنهاء الجولة."
   );
-<<<<<<< HEAD
-
-  const batch = writeBatch(db);
-
-  batch.set(refs.results(code), {
-=======
   const nextRoundNumber = Math.max(1, Number(room.roundCounter || 0) + 1);
 
   const resultPayload = {
     roundNumber: nextRoundNumber,
->>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
     roundMode: h.roundMode || "classic",
     customTitle: h.customTitle || "",
     word: h.word || "",
@@ -475,8 +456,6 @@ export async function hostEndGame(code, options = {}) {
     finalMessage,
     endReason,
     endReasonLabel: getEndReasonLabel(endReason),
-<<<<<<< HEAD
-=======
     endedAtMs: Date.now(),
     endedAt: serverTimestamp(),
   };
@@ -494,7 +473,6 @@ export async function hostEndGame(code, options = {}) {
     endReason,
     endReasonLabel: getEndReasonLabel(endReason),
     endedAtMs: Date.now(),
->>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
     endedAt: serverTimestamp(),
   });
 
@@ -505,10 +483,7 @@ export async function hostEndGame(code, options = {}) {
     voteStopped: true,
     voteMessage: finalMessage,
     voteMessageType: roundWinner === "civilians" ? "success" : roundWinner === "spies" ? "danger" : "info",
-<<<<<<< HEAD
-=======
     roundCounter: nextRoundNumber,
->>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
   });
 
   batch.set(

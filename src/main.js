@@ -6,11 +6,7 @@ import {
   RoomStatus,
   roomExists, getRoom, getMyPublicPlayer,
   createRoom, updateRoomSettings, upsertJoin, leaveRoom,
-<<<<<<< HEAD
-  subRoom, subPublicPlayers, subMyPrivate, subResults, subVotes, subHostSecret, subActivity,
-=======
   subRoom, subPublicPlayers, subMyPrivate, subResults, subVotes, subHostSecret, subActivity, subRoundHistory,
->>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
   hostStartGame, hostEndGame, hostNewRound, hostKickPlayer,
   setMyVotes, clearMyVotes, hostResolveVoteTarget, hostSyncRoundState, addActivityEvent, getEndReasonLabel,
 } from "./api.js";
@@ -129,18 +125,12 @@ let wasMemberSeen = false;
 let resolvingVote = false;
 let activities = [];
 let currentResults = null;
-<<<<<<< HEAD
-=======
 let roundHistory = [];
->>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
 let playNoticeTimer = null;
 let confirmResolver = null;
 let lastFocusedBeforeConfirm = null;
 let autoEndingRound = false;
-<<<<<<< HEAD
-=======
 let connectionState = navigator.onLine ? "online" : "offline";
->>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
 const actionLocks = new Map();
 
 let unsub = {
@@ -151,10 +141,7 @@ let unsub = {
   votes: null,
   secret: null,
   activity: null,
-<<<<<<< HEAD
-=======
   history: null,
->>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
 };
 
 boot();
@@ -169,8 +156,6 @@ async function ensureUidReady() {
   return uid;
 }
 
-<<<<<<< HEAD
-=======
 
 function setConnectionState(state = "online") {
   connectionState = state;
@@ -312,7 +297,6 @@ function renderRoundHistory() {
   setHtml(el.roundHistoryList, html);
 }
 
->>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
 async function boot() {
   el.nameInput.value = loadName();
 
@@ -998,10 +982,7 @@ async function leaveFlow() {
   hostSecret = null;
   activities = [];
   currentResults = null;
-<<<<<<< HEAD
-=======
   roundHistory = [];
->>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
   uidToName = new Map();
   myPrivateData = null;
   playCardVisible = false;
@@ -1029,10 +1010,7 @@ function startSubs(roomCode) {
   stopSubs();
   activities = [];
   currentResults = null;
-<<<<<<< HEAD
-=======
   roundHistory = [];
->>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
   wasMemberSeen = false;
   autoEndingRound = false;
   applyLeaveButtonState();
@@ -1042,10 +1020,7 @@ function startSubs(roomCode) {
   setText(el.lobbyError, "");
   clearPlayNotice();
   renderActivityLog();
-<<<<<<< HEAD
-=======
   renderRoundHistory();
->>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
 
   unsub.room = subRoom(
     roomCode,
@@ -1145,28 +1120,20 @@ function startSubs(roomCode) {
   unsub.activity = subActivity(
     roomCode,
     (list) => {
-<<<<<<< HEAD
-=======
       markConnectionHealthy();
->>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
       activities = list;
       renderPlayPlayers();
       renderActivityLog();
       renderResults(currentResults);
     },
     () => {
-<<<<<<< HEAD
-=======
       markConnectionRecovering();
->>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
       activities = [];
       renderActivityLog();
       renderResults(currentResults);
     }
   );
 
-<<<<<<< HEAD
-=======
   unsub.history = subRoundHistory(
     roomCode,
     (list) => {
@@ -1181,7 +1148,6 @@ function startSubs(roomCode) {
     }
   );
 
->>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
   unsub.results = null;
   wireLobbySettingsWrites();
 }
@@ -1192,11 +1158,7 @@ function stopSubs() {
       u?.();
     } catch {}
   });
-<<<<<<< HEAD
-  unsub = { room: null, players: null, my: null, results: null, votes: null, secret: null, activity: null };
-=======
   unsub = { room: null, players: null, my: null, results: null, votes: null, secret: null, activity: null, history: null };
->>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
 }
 
 function syncHostSecretSub() {
@@ -1226,12 +1188,6 @@ function syncHostSecretSub() {
 
 function ensureResultsSub() {
   if (!code || unsub.results) return;
-<<<<<<< HEAD
-  unsub.results = subResults(code, (res) => {
-    currentResults = res;
-    renderResults(currentResults);
-  });
-=======
   unsub.results = subResults(
     code,
     (res) => {
@@ -1245,7 +1201,6 @@ function ensureResultsSub() {
       renderResults(currentResults);
     }
   );
->>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
 }
 
 function stopResultsSub() {
@@ -1843,27 +1798,6 @@ function renderResults(res) {
     : res.roundWinner === "spies"
       ? "فاز الجواسيس"
       : "لا يوجد فائز واضح";
-<<<<<<< HEAD
-
-  const winnerClass = res.roundWinner === "civilians"
-    ? "civilians"
-    : res.roundWinner === "spies"
-      ? "spies"
-      : "neutral";
-
-  const roundMode = res.roundMode === LOL_MODE_KEY ? "League of Legends" : "كلاسيكي";
-  const endReasonLabel = res.endReasonLabel || getEndReasonLabel(res.endReason || room?.endReason || "") || "غير محدد";
-
-  const mainWordLabel = res.roundMode === LOL_MODE_KEY ? "الشخصية" : "الكلمة";
-  const mainWordValue = res.roundMode === LOL_MODE_KEY
-    ? (res.lolSkin?.championName || "—")
-    : (res.word || "—");
-
-  const secondaryLabel = res.roundMode === LOL_MODE_KEY ? "السكن" : "التصنيف";
-  const secondaryValue = res.roundMode === LOL_MODE_KEY
-    ? (res.lolSkin?.skinName || "—")
-    : (res.categoryLabel || "—");
-=======
 
   const winnerClass = res.roundWinner === "civilians"
     ? "civilians"
@@ -1883,7 +1817,6 @@ function renderResults(res) {
   const secondaryValue = res.roundMode === LOL_MODE_KEY
     ? (res.lolSkin?.skinName || "—")
     : (res.categoryLabel || res.customTitle || "—");
->>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
 
   const questionEvents = getQuestionEvents().slice().reverse();
   const questionCounts = new Map();
@@ -2208,19 +2141,13 @@ async function handleForcedExit(message) {
   hostSecret = null;
   activities = [];
   currentResults = null;
-<<<<<<< HEAD
-=======
   roundHistory = [];
->>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
   uidToName = new Map();
   myPrivateData = null;
   playCardVisible = false;
   wasMemberSeen = false;
   resolvingVote = false;
-<<<<<<< HEAD
-=======
   autoEndingRound = false;
->>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
   actionLocks.clear();
   clearPlayNotice();
 
