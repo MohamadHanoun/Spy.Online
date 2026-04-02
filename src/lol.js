@@ -6,7 +6,7 @@ export const GAME_MODES = [
   {
     key: "classic",
     label: "Classic Mod",
-    description: "الكلمات والفئات العادية الموجودة أصلًا في لعبتك.",
+    description: "الكلمات والفئات العادية.",
   },
   {
     key: CUSTOM_MODE_KEY,
