@@ -16,7 +16,10 @@
         <div class="subtitle"> لاتنسى تشرب مي </div>
       </div>
     </div>
-    <button id="btnLeave" class="btn btn-ghost hidden" type="button">مغادرة</button>
+    <div class="topbarActions">
+      <div id="connectionPill" class="connectionPill" data-state="online">متصل</div>
+      <button id="btnLeave" class="btn btn-ghost hidden" type="button">مغادرة</button>
+    </div>
   </header>
 
   <main class="container">
@@ -27,6 +30,7 @@
 
         <div class="homeHeader compact">
           <h1> كيف فادي عرف وهو جاسوس؟ :To3oxic be like </h1>
+          <h1>في ليلة سوداء هادئة تحمس فادي وقال: هي القطة بتطير؟</h1>
           <p class="hint">اكتب اسمك، ثم إمّا تنشئ غرفة جديدة أو تدخل كود غرفة جاهزة.</p>
         </div>
 
@@ -84,6 +88,16 @@
                 <label class="label">الفئات</label>
                 <div id="createCategoryList" class="chips" role="group" aria-label="الفئات"></div>
                 <div class="hint">هذا القسم يُستخدم فقط في الوضع الكلاسيكي.</div>
+              </div>
+
+              <div id="createCustomFields" class="field span2 hidden">
+                <label class="label" for="createCustomTitle">اسم المود الخاص</label>
+                <input id="createCustomTitle" class="input" type="text" placeholder="مثال: أفلام - مشاهير - أماكن من الشام" />
+                <div class="field" style="margin-top:12px;">
+                  <label class="label" for="createCustomWords">الكلمات الخاصة</label>
+                  <textarea id="createCustomWords" class="input customWordsInput" rows="8" placeholder="كل كلمة بسطر&#10;مثال:&#10;بيروت&#10;دمشق&#10;حلب"></textarea>
+                  <div class="hint">اكتب كل كلمة بسطر جديد. يفضّل 5 كلمات أو أكثر.</div>
+                </div>
               </div>
 
               <div class="field">
@@ -218,6 +232,16 @@
                     <div class="hint">تُستخدم فقط إذا كان المود كلاسيكي.</div>
                   </div>
 
+                  <div id="lobbyCustomFields" class="field span2 hidden">
+                    <label class="label" for="lobbyCustomTitle">اسم المود الخاص</label>
+                    <input id="lobbyCustomTitle" class="input" type="text" placeholder="اسم المود الخاص" />
+                    <div class="field" style="margin-top:12px;">
+                      <label class="label" for="lobbyCustomWords">الكلمات الخاصة</label>
+                      <textarea id="lobbyCustomWords" class="input customWordsInput" rows="8" placeholder="كل كلمة بسطر"></textarea>
+                      <div class="hint">يمكنك تعديل الكلمات قبل بدء الجولة فقط.</div>
+                    </div>
+                  </div>
+
                   <div class="field">
                     <label class="label" for="lobbyTargetPlayers">عدد اللاعبين المطلوب</label>
                     <input id="lobbyTargetPlayers" class="input" type="number" inputmode="numeric" min="0" placeholder="0 = تجاهل" />
@@ -340,7 +364,11 @@
           <div>
             <div class="pill">انتهت الجولة</div>
             <h1 class="endTitle">النتيجة النهائية</h1>
+<<<<<<< HEAD
             <p class="endSubtitle">  ملخص يلي صار   </p>
+=======
+            <p class="endSubtitle">ملخص واضح ومرتب للجولة الأخيرة</p>
+>>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
           </div>
         </div>
 
@@ -348,6 +376,18 @@
           <div id="resultsBox" class="results resultsGrid">—</div>
         </div>
 
+<<<<<<< HEAD
+=======
+        <div class="card muted inner roundHistoryCard">
+          <div class="row spread mobileStackRow">
+            <div class="pill">سجل الجولات</div>
+            <div class="pill">آخر 8 جولات</div>
+          </div>
+          <div id="roundHistoryEmpty" class="hint">ما في سجل جولات لسا.</div>
+          <div id="roundHistoryList" class="roundHistoryList"></div>
+        </div>
+
+>>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
         <div id="hostNewRoundBox" class="actions hidden singleAction">
           <button id="btnNewRound" class="btn btn-primary" type="button">جولة جديدة</button>
         </div>

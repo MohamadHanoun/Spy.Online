@@ -60,6 +60,14 @@ service cloud.firestore {
           isMember() &&
           (roomDoc().data.status == "ended" || roomDoc().data.status == "lobby")
         );
+<<<<<<< HEAD
+=======
+        allow create, update, delete: if isHost();
+      }
+
+      match /roundHistory/{docId} {
+        allow read: if isMember() || isHost();
+>>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
         allow create, update, delete: if isHost();
       }
 

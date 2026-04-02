@@ -1,3 +1,4 @@
+export const CUSTOM_MODE_KEY = "custom";
 export const LOL_MODE_KEY = "lol_skin";
 export const LOL_MODE_LABEL = "League of Legends";
 
@@ -6,6 +7,11 @@ export const GAME_MODES = [
     key: "classic",
     label: "Classic Mod",
     description: "الكلمات والفئات العادية الموجودة أصلًا في لعبتك.",
+  },
+  {
+    key: CUSTOM_MODE_KEY,
+    label: "مود خاص",
+    description: "الهوست يكتب كلمات خاصة يدويًا، واللعبة تختار كلمة عشوائية منها في كل جولة.",
   },
   {
     key: LOL_MODE_KEY,
@@ -19,7 +25,6 @@ const VERSION_URL = "https://ddragon.leagueoflegends.com/api/versions.json";
 const CDN_DATA_BASE = "https://ddragon.leagueoflegends.com/cdn";
 const SPLASH_BASE = "https://ddragon.leagueoflegends.com/cdn/img/champion/splash";
 const LOCALE = "en_US";
-
 
 const SAFE_ZONES = [
   {
@@ -148,9 +153,7 @@ export function createSpyImageView() {
     originY: zone.originY,
 
     scale: Number(randBetween(3.6, 3.15).toFixed(2)),
-
     blurPx: Number(randBetween(0.45, 0.8).toFixed(1)),
-
     translateXPercent: 0,
     translateYPercent: 0,
   };
@@ -165,7 +168,6 @@ export async function pickRandomLolSkinRound() {
     throw new Error("No champions found");
   }
 
-  // نجرب عدة أبطال عشوائيًا حتى نجد بطلًا عنده skin صالح
   const shuffledChampions = shuffle(champions);
 
   for (const championPick of shuffledChampions) {

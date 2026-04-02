@@ -30,6 +30,10 @@ export const refs = {
   results: (code) => doc(db, "rooms", code, "results", "final"),
   vote: (code, uid) => doc(db, "rooms", code, "votes", uid),
   activityCol: (code) => collection(db, "rooms", code, "activity"),
+<<<<<<< HEAD
+=======
+  historyCol: (code) => collection(db, "rooms", code, "roundHistory"),
+>>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
 };
 
 function uniqueArray(arr) {
@@ -60,6 +64,18 @@ function buildRoundStartText(firstQuestion, players = []) {
   return `بدأت الجولة. أول سؤال عشوائي: ${fromName} يسأل ${toName}.`;
 }
 
+<<<<<<< HEAD
+=======
+function buildRoundPreview(result = {}) {
+  if (result.roundMode === "lol_skin") {
+    const champion = result.lolSkin?.championName || "—";
+    const skin = result.lolSkin?.skinName || "—";
+    return `${champion} — ${skin}`;
+  }
+  return result.word || "—";
+}
+
+>>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
 export function getEndReasonLabel(reason) {
   switch (reason) {
     case "timeout":
@@ -127,6 +143,10 @@ export async function createRoom(code, hostUid, settings) {
     voteMessageType: "",
     roundWinner: "",
     endReason: "",
+<<<<<<< HEAD
+=======
+    roundCounter: 0,
+>>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
   });
 }
 
@@ -165,11 +185,39 @@ export async function upsertJoin(code, uid, name) {
 }
 
 export async function leaveRoom(code, uid) {
-  await Promise.allSettled([
-    deleteDoc(refs.pubPlayer(code, uid)),
-    deleteDoc(refs.privPlayer(code, uid)),
-    deleteDoc(refs.vote(code, uid)),
+  const [roomSnap, playersSnap] = await Promise.all([
+    getDoc(refs.room(code)).catch(() => null),
+    getDocs(query(collection(db, "rooms", code, "publicPlayers"), orderBy("joinedAtMs", "asc"), limit(200))).catch(() => null),
   ]);
+
+  const batch = writeBatch(db);
+  batch.delete(refs.pubPlayer(code, uid));
+  batch.delete(refs.privPlayer(code, uid));
+  batch.delete(refs.vote(code, uid));
+
+  if (roomSnap?.exists() && roomSnap.data()?.hostUid === uid && playersSnap) {
+    let nextHost = null;
+    playersSnap.forEach((playerDoc) => {
+      if (playerDoc.id !== uid && !nextHost) {
+        nextHost = { uid: playerDoc.id, ...(playerDoc.data() || {}) };
+      }
+    });
+
+    if (nextHost?.uid) {
+      batch.update(refs.room(code), { hostUid: nextHost.uid });
+      batch.set(
+        doc(refs.activityCol(code)),
+        buildActivityPayload({
+          type: "host-transfer",
+          text: `انتقل الهوست إلى ${nextHost.name || "لاعب جديد"}.`,
+          targetUid: nextHost.uid,
+          targetName: nextHost.name || "بدون اسم",
+        })
+      );
+    }
+  }
+
+  await batch.commit();
 }
 
 export async function hostKickPlayer(code, uid) {
@@ -248,6 +296,21 @@ export function subActivity(code, cb, onError) {
     },
     onError
   );
+<<<<<<< HEAD
+=======
+}
+
+export function subRoundHistory(code, cb, onError) {
+  return onSnapshot(
+    query(refs.historyCol(code), orderBy("endedAtMs", "desc"), limit(8)),
+    (snap) => {
+      const list = [];
+      snap.forEach((d) => list.push({ id: d.id, ...(d.data() || {}) }));
+      cb(list);
+    },
+    onError
+  );
+>>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
 }
 
 export async function setMyVotes(code, uid, targetUids = []) {
@@ -280,6 +343,7 @@ export async function hostStartGame({
   word,
   categoryLabel,
   roundMode = "classic",
+  customTitle = "",
   roundData = null,
   spiesUids,
   firstQuestion,
@@ -296,6 +360,7 @@ export async function hostStartGame({
 
   batch.set(refs.hostSecret(code), {
     roundMode,
+    customTitle,
     word,
     categoryLabel,
     lolSkin,
@@ -352,7 +417,7 @@ export async function hostStartGame({
     } else {
       batch.update(refs.privPlayer(code, p.uid), {
         role: isSpy ? "spy" : "civilian",
-        cardType: "classic",
+        cardType: roundMode === "custom" ? "classic" : "classic",
         word: isSpy ? "" : word,
         categoryLabel: isSpy ? "" : categoryLabel,
         spyPartnerNames: partnerNames,
@@ -388,11 +453,19 @@ export async function hostEndGame(code, options = {}) {
           ? "انتهت الجولة. فاز الجواسيس."
           : "قام الهوست بإنهاء الجولة."
   );
+<<<<<<< HEAD
 
   const batch = writeBatch(db);
 
   batch.set(refs.results(code), {
+=======
+  const nextRoundNumber = Math.max(1, Number(room.roundCounter || 0) + 1);
+
+  const resultPayload = {
+    roundNumber: nextRoundNumber,
+>>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
     roundMode: h.roundMode || "classic",
+    customTitle: h.customTitle || "",
     word: h.word || "",
     categoryLabel: h.categoryLabel || "",
     lolSkin: h.lolSkin || null,
@@ -402,6 +475,26 @@ export async function hostEndGame(code, options = {}) {
     finalMessage,
     endReason,
     endReasonLabel: getEndReasonLabel(endReason),
+<<<<<<< HEAD
+=======
+    endedAtMs: Date.now(),
+    endedAt: serverTimestamp(),
+  };
+
+  const batch = writeBatch(db);
+
+  batch.set(refs.results(code), resultPayload);
+  batch.set(doc(refs.historyCol(code)), {
+    roundNumber: nextRoundNumber,
+    roundMode: resultPayload.roundMode,
+    customTitle: resultPayload.customTitle,
+    preview: buildRoundPreview(resultPayload),
+    roundWinner,
+    finalMessage,
+    endReason,
+    endReasonLabel: getEndReasonLabel(endReason),
+    endedAtMs: Date.now(),
+>>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
     endedAt: serverTimestamp(),
   });
 
@@ -412,6 +505,10 @@ export async function hostEndGame(code, options = {}) {
     voteStopped: true,
     voteMessage: finalMessage,
     voteMessageType: roundWinner === "civilians" ? "success" : roundWinner === "spies" ? "danger" : "info",
+<<<<<<< HEAD
+=======
+    roundCounter: nextRoundNumber,
+>>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
   });
 
   batch.set(

@@ -1921,3 +1921,133 @@ body.modalOpen{
   .endInfoRow{ flex-direction:column; align-items:flex-start; }
   .endInfoValue{ text-align:right; }
 }
+<<<<<<< HEAD
+=======
+
+/* ===== Connection / Custom Mode / Round History ===== */
+.topbarActions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.connectionPill{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:38px;
+  padding:8px 12px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(13,24,50,.72);
+  color:var(--text);
+  font-size:12px;
+  font-weight:900;
+  box-shadow:var(--shadow-md);
+}
+
+.connectionPill[data-state="online"]{
+  color:#bff7d8;
+  border-color:rgba(88,227,157,.28);
+  background:rgba(18,63,46,.55);
+}
+
+.connectionPill[data-state="syncing"],
+.connectionPill[data-state="reconnecting"]{
+  color:#dff6ff;
+  border-color:rgba(103,232,249,.28);
+  background:rgba(10,48,71,.58);
+}
+
+.connectionPill[data-state="offline"]{
+  color:#ffd7df;
+  border-color:rgba(255,95,127,.28);
+  background:rgba(74,20,36,.56);
+}
+
+.customWordsInput{
+  min-height:180px;
+  resize:vertical;
+  line-height:1.7;
+}
+
+.roundHistoryCard{
+  margin-top:16px;
+}
+
+.roundHistoryList{
+  display:grid;
+  gap:12px;
+  margin-top:12px;
+}
+
+.roundHistoryItem{
+  padding:14px 16px;
+  border-radius:18px;
+  border:1px solid rgba(67,90,150,.35);
+  background:linear-gradient(180deg, rgba(10,21,49,.84), rgba(8,16,39,.92));
+  box-shadow:var(--shadow-md);
+}
+
+.roundHistoryItem.civilians{
+  border-color:rgba(88,227,157,.26);
+  background:linear-gradient(180deg, rgba(11,47,37,.68), rgba(8,20,25,.92));
+}
+
+.roundHistoryItem.spies{
+  border-color:rgba(255,95,127,.26);
+  background:linear-gradient(180deg, rgba(61,20,34,.72), rgba(21,10,17,.92));
+}
+
+.roundHistoryTop{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+
+.roundHistoryTitle{
+  font-size:15px;
+  font-weight:1000;
+}
+
+.roundHistoryWinner{
+  font-size:13px;
+  font-weight:900;
+}
+
+.roundHistoryWinner.civilians{ color:#bff7d8; }
+.roundHistoryWinner.spies{ color:#ffc2d2; }
+.roundHistoryWinner.neutral{ color:#dfe7ff; }
+
+.roundHistoryMeta{
+  margin-top:8px;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.7;
+}
+
+.roundHistoryPreview{
+  margin-top:8px;
+  color:#eef3ff;
+  font-size:14px;
+  line-height:1.8;
+}
+
+@media (max-width: 640px){
+  .topbarActions{
+    gap:8px;
+  }
+
+  .connectionPill{
+    min-height:34px;
+    padding:7px 10px;
+    font-size:11px;
+  }
+
+  .roundHistoryTop{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+}
+>>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)

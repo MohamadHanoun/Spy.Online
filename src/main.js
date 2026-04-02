@@ -6,13 +6,17 @@ import {
   RoomStatus,
   roomExists, getRoom, getMyPublicPlayer,
   createRoom, updateRoomSettings, upsertJoin, leaveRoom,
+<<<<<<< HEAD
   subRoom, subPublicPlayers, subMyPrivate, subResults, subVotes, subHostSecret, subActivity,
+=======
+  subRoom, subPublicPlayers, subMyPrivate, subResults, subVotes, subHostSecret, subActivity, subRoundHistory,
+>>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
   hostStartGame, hostEndGame, hostNewRound, hostKickPlayer,
   setMyVotes, clearMyVotes, hostResolveVoteTarget, hostSyncRoundState, addActivityEvent, getEndReasonLabel,
 } from "./api.js";
 import { SPY_DATA } from "./data.js";
-import { buildPool, pickWordAvoidingRecent, pickSpies, pickFirstQuestion } from "./game.js";
-import { GAME_MODES, LOL_MODE_KEY, getModeDefinition, getModeLabel, pickRandomLolSkinRound } from "./lol.js";
+import { buildPool, buildCustomPool, pickWordAvoidingRecent, pickSpies, pickFirstQuestion } from "./game.js";
+import { GAME_MODES, CUSTOM_MODE_KEY, LOL_MODE_KEY, getModeDefinition, getModeLabel, pickRandomLolSkinRound } from "./lol.js";
 
 const DEFAULT_CLASSIC_CATEGORIES = ["places", "foods", "animals", "objects", "countries", "video_games"];
 
@@ -31,6 +35,9 @@ const el = {
   createModeList: $("#createModeList"),
   createModeHint: $("#createModeHint"),
   createClassicFields: $("#createClassicFields"),
+  createCustomFields: $("#createCustomFields"),
+  createCustomTitle: $("#createCustomTitle"),
+  createCustomWords: $("#createCustomWords"),
   createCategoryList: $("#createCategoryList"),
   createTargetPlayers: $("#createTargetPlayers"),
   createSpiesCount: $("#createSpiesCount"),
@@ -39,6 +46,7 @@ const el = {
 
   // top
   btnLeave: $("#btnLeave"),
+  connectionPill: $("#connectionPill"),
 
   // lobby
   roomCodeView: $("#roomCodeView"),
@@ -56,6 +64,9 @@ const el = {
   lobbyModeList: $("#lobbyModeList"),
   lobbyModeHint: $("#lobbyModeHint"),
   lobbyClassicFields: $("#lobbyClassicFields"),
+  lobbyCustomFields: $("#lobbyCustomFields"),
+  lobbyCustomTitle: $("#lobbyCustomTitle"),
+  lobbyCustomWords: $("#lobbyCustomWords"),
   lobbyCategoryList: $("#lobbyCategoryList"),
   lobbyTargetPlayers: $("#lobbyTargetPlayers"),
   lobbySpiesCount: $("#lobbySpiesCount"),
@@ -97,6 +108,8 @@ const el = {
 
   // end
   resultsBox: $("#resultsBox"),
+  roundHistoryList: $("#roundHistoryList"),
+  roundHistoryEmpty: $("#roundHistoryEmpty"),
   hostNewRoundBox: $("#hostNewRoundBox"),
   btnNewRound: $("#btnNewRound"),
 };
@@ -116,10 +129,18 @@ let wasMemberSeen = false;
 let resolvingVote = false;
 let activities = [];
 let currentResults = null;
+<<<<<<< HEAD
+=======
+let roundHistory = [];
+>>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
 let playNoticeTimer = null;
 let confirmResolver = null;
 let lastFocusedBeforeConfirm = null;
 let autoEndingRound = false;
+<<<<<<< HEAD
+=======
+let connectionState = navigator.onLine ? "online" : "offline";
+>>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
 const actionLocks = new Map();
 
 let unsub = {
@@ -130,6 +151,10 @@ let unsub = {
   votes: null,
   secret: null,
   activity: null,
+<<<<<<< HEAD
+=======
+  history: null,
+>>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
 };
 
 boot();
@@ -144,6 +169,150 @@ async function ensureUidReady() {
   return uid;
 }
 
+<<<<<<< HEAD
+=======
+
+function setConnectionState(state = "online") {
+  connectionState = state;
+  if (!el.connectionPill) return;
+
+  const labels = {
+    online: "متصل",
+    syncing: "جاري المزامنة",
+    reconnecting: "إعادة اتصال",
+    offline: "غير متصل",
+  };
+
+  el.connectionPill.dataset.state = state;
+  setText(el.connectionPill, labels[state] || labels.online);
+}
+
+function markConnectionHealthy() {
+  if (!navigator.onLine) {
+    setConnectionState("offline");
+    return;
+  }
+  setConnectionState("online");
+}
+
+function markConnectionRecovering() {
+  if (!navigator.onLine) {
+    setConnectionState("offline");
+    return;
+  }
+  setConnectionState(code ? "reconnecting" : "online");
+}
+
+function initConnectionIndicator() {
+  setConnectionState(navigator.onLine ? "online" : "offline");
+
+  window.addEventListener("online", () => {
+    setConnectionState(code ? "syncing" : "online");
+  });
+
+  window.addEventListener("offline", () => {
+    setConnectionState("offline");
+  });
+}
+
+function normalizeCustomWords(words) {
+  const raw = Array.isArray(words)
+    ? words
+    : String(words || "").split(/\r?\n/g);
+
+  const list = [];
+  const seen = new Set();
+
+  for (const item of raw) {
+    const value = String(item || "").trim();
+    if (!value) continue;
+
+    const key = value.toLowerCase();
+    if (seen.has(key)) continue;
+
+    seen.add(key);
+    list.push(value);
+  }
+
+  return list.slice(0, 300);
+}
+
+function wordsToTextarea(words = []) {
+  return normalizeCustomWords(words).join("\n");
+}
+
+function getSettingsModeLabel(settings = {}) {
+  if (settings.modeKey === CUSTOM_MODE_KEY) {
+    return String(settings.customTitle || "").trim() || "مود خاص";
+  }
+  return getModeLabel(settings.modeKey);
+}
+
+function getModeSummaryText(settings = {}) {
+  if (settings.modeKey === CUSTOM_MODE_KEY) {
+    const wordsCount = Array.isArray(settings.customWords) ? settings.customWords.length : 0;
+    return `${getSettingsModeLabel(settings)} — ${wordsCount} كلمة`;
+  }
+  if (settings.modeKey === LOL_MODE_KEY) {
+    return "League of Legends — جولة صور سكنات";
+  }
+  const labels = (settings.categories || [])
+    .map((key) => SPY_DATA.categories.find((c) => c.key === key)?.label || key)
+    .join("، ");
+  return labels || "—";
+}
+
+function getRoundModeDisplay(result = {}) {
+  if (result.roundMode === CUSTOM_MODE_KEY) {
+    return String(result.customTitle || result.categoryLabel || "مود خاص").trim() || "مود خاص";
+  }
+  return result.roundMode === LOL_MODE_KEY ? "League of Legends" : "كلاسيكي";
+}
+
+function shouldForceExitOnError(err) {
+  const codeValue = String(err?.code || "").toLowerCase();
+  return codeValue.includes("permission") || codeValue.includes("not-found") || codeValue.includes("failed-precondition");
+}
+
+function renderRoundHistory() {
+  if (!el.roundHistoryList || !el.roundHistoryEmpty) return;
+
+  if (!roundHistory.length) {
+    setHtml(el.roundHistoryList, "");
+    el.roundHistoryEmpty.classList.remove("hidden");
+    return;
+  }
+
+  el.roundHistoryEmpty.classList.add("hidden");
+  const html = roundHistory.map((item) => {
+    const winnerText = item.roundWinner === "civilians"
+      ? "المدنيون"
+      : item.roundWinner === "spies"
+        ? "الجواسيس"
+        : "—";
+    const winnerClass = item.roundWinner === "civilians"
+      ? "civilians"
+      : item.roundWinner === "spies"
+        ? "spies"
+        : "neutral";
+    const title = item.roundNumber ? `الجولة #${item.roundNumber}` : "جولة";
+    const modeText = getRoundModeDisplay(item);
+    return `
+      <div class="roundHistoryItem ${winnerClass}">
+        <div class="roundHistoryTop">
+          <div class="roundHistoryTitle">${escapeHtml(title)}</div>
+          <div class="roundHistoryWinner ${winnerClass}">${escapeHtml(winnerText)}</div>
+        </div>
+        <div class="roundHistoryMeta">${escapeHtml(modeText)} — ${escapeHtml(item.endReasonLabel || getEndReasonLabel(item.endReason || "") || "—")}</div>
+        <div class="roundHistoryPreview">${escapeHtml(item.preview || item.finalMessage || "—")}</div>
+      </div>
+    `;
+  }).join("");
+
+  setHtml(el.roundHistoryList, html);
+}
+
+>>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
 async function boot() {
   el.nameInput.value = loadName();
 
@@ -153,6 +322,7 @@ async function boot() {
   initCreateDefaultsUI();
   wire();
   bindLolImageProtection();
+  initConnectionIndicator();
   applyLeaveButtonState();
 
   const user = await ensureAnonAuth();
@@ -617,6 +787,8 @@ function initCreateDefaultsUI() {
   const def = normalizeSettings(loadHostDefaults() || {
     modeKey: "classic",
     categories: DEFAULT_CLASSIC_CATEGORIES,
+    customTitle: "",
+    customWords: [],
     targetPlayers: 0,
     spiesCount: 1,
     roundMinutes: 8,
@@ -638,6 +810,8 @@ function initCreateDefaultsUI() {
   el.createSpiesCount.value = String(def.spiesCount ?? 1);
   el.createRoundMinutes.value = String(def.roundMinutes ?? 8);
   el.createSpyTeammatesVisible.checked = !!def.spyTeammatesVisible;
+  if (el.createCustomTitle) el.createCustomTitle.value = def.customTitle || "";
+  if (el.createCustomWords) el.createCustomWords.value = wordsToTextarea(def.customWords || []);
 
   toggleCreateModeSections(def.modeKey);
   setText(el.createModeHint, getModeDefinition(def.modeKey).description || "");
@@ -650,6 +824,8 @@ function initCreateDefaultsUI() {
   el.createSpiesCount.addEventListener("input", persistDefaults);
   el.createRoundMinutes.addEventListener("input", persistDefaults);
   el.createSpyTeammatesVisible.addEventListener("change", persistDefaults);
+  el.createCustomTitle?.addEventListener("input", persistDefaults);
+  el.createCustomWords?.addEventListener("input", persistDefaults);
 }
 
 function readCreateDefaults() {
@@ -658,6 +834,8 @@ function readCreateDefaults() {
   return normalizeSettings({
     modeKey,
     categories,
+    customTitle: el.createCustomTitle?.value || "",
+    customWords: normalizeCustomWords(el.createCustomWords?.value || ""),
     targetPlayers: toInt(el.createTargetPlayers.value, 0),
     spiesCount: toInt(el.createSpiesCount.value, 1),
     roundMinutes: toInt(el.createRoundMinutes.value, 8),
@@ -666,11 +844,17 @@ function readCreateDefaults() {
 }
 
 function normalizeSettings(s) {
-  const modeKey = s?.modeKey === LOL_MODE_KEY ? LOL_MODE_KEY : "classic";
+  const modeKey = s?.modeKey === LOL_MODE_KEY
+    ? LOL_MODE_KEY
+    : s?.modeKey === CUSTOM_MODE_KEY
+      ? CUSTOM_MODE_KEY
+      : "classic";
   const categories = Array.isArray(s?.categories) ? s.categories.filter(Boolean) : DEFAULT_CLASSIC_CATEGORIES;
   return {
     modeKey,
     categories,
+    customTitle: String(s?.customTitle || "").trim(),
+    customWords: normalizeCustomWords(s?.customWords || []),
     targetPlayers: Math.max(0, toInt(s?.targetPlayers, 0)),
     spiesCount: Math.max(0, toInt(s?.spiesCount, 1)),
     roundMinutes: Math.max(0, toInt(s?.roundMinutes, 8)),
@@ -752,10 +936,12 @@ function getCheckedCategories(container) {
 
 function toggleCreateModeSections(modeKey) {
   el.createClassicFields?.classList.toggle("hidden", modeKey !== "classic");
+  el.createCustomFields?.classList.toggle("hidden", modeKey !== CUSTOM_MODE_KEY);
 }
 
 function toggleLobbyModeSections(modeKey) {
   el.lobbyClassicFields?.classList.toggle("hidden", modeKey !== "classic");
+  el.lobbyCustomFields?.classList.toggle("hidden", modeKey !== CUSTOM_MODE_KEY);
 }
 
 function applyLeaveButtonState() {
@@ -812,6 +998,10 @@ async function leaveFlow() {
   hostSecret = null;
   activities = [];
   currentResults = null;
+<<<<<<< HEAD
+=======
+  roundHistory = [];
+>>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
   uidToName = new Map();
   myPrivateData = null;
   playCardVisible = false;
@@ -831,24 +1021,36 @@ async function leaveFlow() {
 
   clearLast();
   applyLeaveButtonState();
+  renderRoundHistory();
+  setConnectionState(navigator.onLine ? "online" : "offline");
 }
 
 function startSubs(roomCode) {
   stopSubs();
   activities = [];
   currentResults = null;
+<<<<<<< HEAD
+=======
+  roundHistory = [];
+>>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
   wasMemberSeen = false;
   autoEndingRound = false;
   applyLeaveButtonState();
+  setConnectionState(navigator.onLine ? "syncing" : "offline");
   setText(el.roomCodeView, roomCode);
   setText(el.playError, "");
   setText(el.lobbyError, "");
   clearPlayNotice();
   renderActivityLog();
+<<<<<<< HEAD
+=======
+  renderRoundHistory();
+>>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
 
   unsub.room = subRoom(
     roomCode,
     (x) => {
+      markConnectionHealthy();
       room = x;
       isHost = !!room?.hostUid && room.hostUid === uid;
       syncHostSecretSub();
@@ -860,12 +1062,18 @@ function startSubs(roomCode) {
       maybeSyncRoundStateFromPlayers();
       maybeResolveVotes();
     },
-    () => handleForcedExit("تم فقدان الوصول إلى الغرفة.")
+    (err) => {
+      markConnectionRecovering();
+      if (shouldForceExitOnError(err)) {
+        handleForcedExit("تم فقدان الوصول إلى الغرفة.");
+      }
+    }
   );
 
   unsub.players = subPublicPlayers(
     roomCode,
     (list) => {
+      markConnectionHealthy();
       players = list;
       uidToName = new Map(list.map((p) => [p.uid, p.name || "بدون اسم"]));
 
@@ -885,8 +1093,9 @@ function startSubs(roomCode) {
       maybeSyncRoundStateFromPlayers();
       maybeResolveVotes();
     },
-    () => {
-      if (code) handleForcedExit("تم إخراجك من الغرفة.");
+    (err) => {
+      markConnectionRecovering();
+      if (shouldForceExitOnError(err) && code) handleForcedExit("تم إخراجك من الغرفة.");
     }
   );
 
@@ -894,6 +1103,7 @@ function startSubs(roomCode) {
     roomCode,
     uid,
     (me) => {
+      markConnectionHealthy();
       myPrivateData = me;
       el.cardCover.classList.remove("hidden");
       el.cardBox.classList.add("hidden");
@@ -908,14 +1118,16 @@ function startSubs(roomCode) {
 
       if (room?.status === RoomStatus.PLAYING) showScreen("card");
     },
-    () => {
-      if (code && wasMemberSeen) handleForcedExit("تم إخراجك من الغرفة.");
+    (err) => {
+      markConnectionRecovering();
+      if (shouldForceExitOnError(err) && code && wasMemberSeen) handleForcedExit("تم إخراجك من الغرفة.");
     }
   );
 
   unsub.votes = subVotes(
     roomCode,
     (list) => {
+      markConnectionHealthy();
       votes = list;
       renderPlayPlayers();
       renderVoteMeta();
@@ -923,6 +1135,7 @@ function startSubs(roomCode) {
       maybeResolveVotes();
     },
     () => {
+      markConnectionRecovering();
       votes = [];
       renderPlayPlayers();
       renderVoteMeta();
@@ -932,18 +1145,43 @@ function startSubs(roomCode) {
   unsub.activity = subActivity(
     roomCode,
     (list) => {
+<<<<<<< HEAD
+=======
+      markConnectionHealthy();
+>>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
       activities = list;
       renderPlayPlayers();
       renderActivityLog();
       renderResults(currentResults);
     },
     () => {
+<<<<<<< HEAD
+=======
+      markConnectionRecovering();
+>>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
       activities = [];
       renderActivityLog();
       renderResults(currentResults);
     }
   );
 
+<<<<<<< HEAD
+=======
+  unsub.history = subRoundHistory(
+    roomCode,
+    (list) => {
+      markConnectionHealthy();
+      roundHistory = list;
+      renderRoundHistory();
+    },
+    () => {
+      markConnectionRecovering();
+      roundHistory = [];
+      renderRoundHistory();
+    }
+  );
+
+>>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
   unsub.results = null;
   wireLobbySettingsWrites();
 }
@@ -954,7 +1192,11 @@ function stopSubs() {
       u?.();
     } catch {}
   });
+<<<<<<< HEAD
   unsub = { room: null, players: null, my: null, results: null, votes: null, secret: null, activity: null };
+=======
+  unsub = { room: null, players: null, my: null, results: null, votes: null, secret: null, activity: null, history: null };
+>>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
 }
 
 function syncHostSecretSub() {
@@ -984,10 +1226,26 @@ function syncHostSecretSub() {
 
 function ensureResultsSub() {
   if (!code || unsub.results) return;
+<<<<<<< HEAD
   unsub.results = subResults(code, (res) => {
     currentResults = res;
     renderResults(currentResults);
   });
+=======
+  unsub.results = subResults(
+    code,
+    (res) => {
+      markConnectionHealthy();
+      currentResults = res;
+      renderResults(currentResults);
+    },
+    () => {
+      markConnectionRecovering();
+      currentResults = null;
+      renderResults(currentResults);
+    }
+  );
+>>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
 }
 
 function stopResultsSub() {
@@ -1107,18 +1365,11 @@ function renderPlayPlayers() {
 
 function renderLobbyPublicSummary(settings) {
   const n = players.length;
-  setText(el.publicModeView, getModeLabel(settings.modeKey));
+  setText(el.publicModeView, getSettingsModeLabel(settings));
   setText(el.publicPlayersView, settings.targetPlayers > 0 ? `${n} / ${settings.targetPlayers}` : `${n}`);
   setText(el.publicSpiesView, String(settings.spiesCount || 0));
   setText(el.publicTimeView, settings.roundMinutes > 0 ? `${settings.roundMinutes} دقيقة` : "بدون مؤقت");
-  if (settings.modeKey === LOL_MODE_KEY) {
-    setText(el.publicCategoriesView, "League of Legends — جولة صور سكنات");
-  } else {
-    const labels = settings.categories
-      .map((key) => SPY_DATA.categories.find((c) => c.key === key)?.label || key)
-      .join("، ");
-    setText(el.publicCategoriesView, labels || "—");
-  }
+  setText(el.publicCategoriesView, getModeSummaryText(settings));
 }
 
 function renderStatus() {
@@ -1127,7 +1378,7 @@ function renderStatus() {
   const st = room.status;
   const n = players.length;
   const s = normalizeSettings(room.settings || {});
-  const modeLabel = getModeLabel(s.modeKey);
+  const modeLabel = getSettingsModeLabel(s);
 
   if (st === RoomStatus.LOBBY) {
     setText(el.statusPill, "Lobby");
@@ -1144,13 +1395,14 @@ function renderStatus() {
   }
 
   renderLobbyPublicSummary(s);
-  updateRoundContext(s.modeKey);
+  updateRoundContext(s.modeKey, s.customTitle);
   setText(el.roundModeBadge, modeLabel);
 
   const meta = `لاعبين: ${n} | مطلوب: ${s.targetPlayers || "—"} | جواسيس: ${s.spiesCount} | وقت: ${s.roundMinutes > 0 ? `${s.roundMinutes}د` : "—"} | يعرفون بعض: ${s.spyTeammatesVisible ? "نعم" : "لا"}`;
   setText(el.metaInfo, meta);
 
-  const canStart = isHost && st === RoomStatus.LOBBY && n >= 2 && (s.targetPlayers <= 0 || n === s.targetPlayers);
+  const customWordsReady = s.modeKey !== CUSTOM_MODE_KEY || (s.customWords || []).length >= 3;
+  const canStart = isHost && st === RoomStatus.LOBBY && n >= 2 && (s.targetPlayers <= 0 || n === s.targetPlayers) && customWordsReady;
   el.btnStart.disabled = !canStart;
   setText(el.saveState, isHost ? "✅ إعدادات الهوست فقط" : "👀 عرض مختصر فقط");
 }
@@ -1198,6 +1450,8 @@ function wireLobbySettingsWrites() {
     const settings = normalizeSettings({
       modeKey: getSelectedMode(el.lobbyModeList),
       categories: getCheckedCategories(el.lobbyCategoryList),
+      customTitle: el.lobbyCustomTitle?.value || "",
+      customWords: normalizeCustomWords(el.lobbyCustomWords?.value || ""),
       targetPlayers: toInt(el.lobbyTargetPlayers.value, 0),
       spiesCount: toInt(el.lobbySpiesCount.value, 0),
       roundMinutes: toInt(el.lobbyRoundMinutes.value, 0),
@@ -1206,6 +1460,11 @@ function wireLobbySettingsWrites() {
 
     if (settings.modeKey === "classic" && !settings.categories.length) {
       setText(el.lobbyError, "اختر فئة واحدة على الأقل.");
+      return;
+    }
+
+    if (settings.modeKey === CUSTOM_MODE_KEY && settings.customWords.length < 3) {
+      setText(el.lobbyError, "المود الخاص يحتاج 3 كلمات أو أكثر.");
       return;
     }
 
@@ -1222,6 +1481,8 @@ function wireLobbySettingsWrites() {
   el.lobbySpiesCount.addEventListener("input", saveToRoomDebounced);
   el.lobbyRoundMinutes.addEventListener("input", saveToRoomDebounced);
   el.lobbySpyTeammatesVisible.addEventListener("change", saveToRoomDebounced);
+  el.lobbyCustomTitle?.addEventListener("input", saveToRoomDebounced);
+  el.lobbyCustomWords?.addEventListener("input", saveToRoomDebounced);
 }
 
 function hydrateLobbySettingsFromRoom() {
@@ -1239,6 +1500,8 @@ function hydrateLobbySettingsFromRoom() {
   el.lobbySpiesCount.disabled = !editable;
   el.lobbyRoundMinutes.disabled = !editable;
   el.lobbySpyTeammatesVisible.disabled = !editable;
+  if (el.lobbyCustomTitle) el.lobbyCustomTitle.disabled = !editable;
+  if (el.lobbyCustomWords) el.lobbyCustomWords.disabled = !editable;
 
   Array.from(el.lobbyCategoryList.querySelectorAll('input[type="checkbox"]')).forEach((x) => {
     x.disabled = !editable;
@@ -1251,6 +1514,8 @@ function hydrateLobbySettingsFromRoom() {
   el.lobbySpiesCount.value = String(s.spiesCount ?? 0);
   el.lobbyRoundMinutes.value = String(s.roundMinutes ?? 0);
   el.lobbySpyTeammatesVisible.checked = !!s.spyTeammatesVisible;
+  if (el.lobbyCustomTitle) el.lobbyCustomTitle.value = s.customTitle || "";
+  if (el.lobbyCustomWords) el.lobbyCustomWords.value = wordsToTextarea(s.customWords || []);
   toggleLobbyModeSections(s.modeKey);
   setText(el.lobbyModeHint, getModeDefinition(s.modeKey).description || "");
 }
@@ -1275,6 +1540,14 @@ async function startRound() {
     return setText(el.lobbyError, "عدد الجواسيس يجب أن يكون أقل من عدد اللاعبين.");
   }
 
+  if (s.modeKey === "classic" && !s.categories.length) {
+    return setText(el.lobbyError, "اختر فئة واحدة على الأقل.");
+  }
+
+  if (s.modeKey === CUSTOM_MODE_KEY && s.customWords.length < 3) {
+    return setText(el.lobbyError, "المود الخاص يحتاج 3 كلمات أو أكثر.");
+  }
+
   const spiesUids = pickSpies(players.map((p) => p.uid), s.spiesCount);
   const fq = pickFirstQuestion(players.map((p) => p.uid));
 
@@ -1282,6 +1555,7 @@ async function startRound() {
     word: "",
     categoryLabel: "",
     roundMode: s.modeKey,
+    customTitle: s.customTitle || "",
     roundData: null,
     categoryKeys: s.modeKey === "classic" ? s.categories : [],
   };
@@ -1294,6 +1568,13 @@ async function startRound() {
       console.error(err);
       return setText(el.lobbyError, "تعذر تحميل بيانات سكنات League of Legends الآن.");
     }
+  } else if (s.modeKey === CUSTOM_MODE_KEY) {
+    const categoryLabel = s.customTitle || "مود خاص";
+    const pool = buildCustomPool(s.customWords, categoryLabel);
+    if (!pool.length) return setText(el.lobbyError, "لا توجد كلمات صالحة داخل المود الخاص.");
+    const chosen = pickWordAvoidingRecent(pool, 15);
+    roundPayload.word = chosen.word;
+    roundPayload.categoryLabel = categoryLabel;
   } else {
     const pool = buildPool(s.categories);
     if (!pool.length) return setText(el.lobbyError, "لا توجد كلمات ضمن الفئات المختارة.");
@@ -1310,6 +1591,7 @@ async function startRound() {
     word: roundPayload.word,
     categoryLabel: roundPayload.categoryLabel,
     roundMode: roundPayload.roundMode,
+    customTitle: roundPayload.customTitle,
     roundData: roundPayload.roundData,
     spiesUids,
     firstQuestion: fq,
@@ -1480,11 +1762,15 @@ function renderFirstQuestion(fq) {
   setText(el.firstQuestion, `ابدأوا: ${fromName} يسأل ${toName} أول سؤال.`);
 }
 
-function updateRoundContext(modeKey) {
-  const modeLabel = getModeLabel(modeKey);
+function updateRoundContext(modeKey, customTitle = "") {
+  const modeLabel = modeKey === CUSTOM_MODE_KEY
+    ? (String(customTitle || "").trim() || "مود خاص")
+    : getModeLabel(modeKey);
   setText(el.roundModeBadge, modeLabel);
   if (modeKey === LOL_MODE_KEY) {
     setText(el.playHint, "اسألوا عن تفاصيل السكن والصورة. الأمبوستر يرى نفس الصورة لكن بشكل محدود.");
+  } else if (modeKey === CUSTOM_MODE_KEY) {
+    setText(el.playHint, "هذه جولة بمود خاص. ركزوا على الأسئلة الذكية حتى تكشفوا الجاسوس.");
   } else {
     setText(el.playHint, "ابدأوا الأسئلة، والكل يحاول يكتشف الجاسوس.");
   }
@@ -1557,6 +1843,7 @@ function renderResults(res) {
     : res.roundWinner === "spies"
       ? "فاز الجواسيس"
       : "لا يوجد فائز واضح";
+<<<<<<< HEAD
 
   const winnerClass = res.roundWinner === "civilians"
     ? "civilians"
@@ -1576,6 +1863,27 @@ function renderResults(res) {
   const secondaryValue = res.roundMode === LOL_MODE_KEY
     ? (res.lolSkin?.skinName || "—")
     : (res.categoryLabel || "—");
+=======
+
+  const winnerClass = res.roundWinner === "civilians"
+    ? "civilians"
+    : res.roundWinner === "spies"
+      ? "spies"
+      : "neutral";
+
+  const roundMode = getRoundModeDisplay(res);
+  const endReasonLabel = res.endReasonLabel || getEndReasonLabel(res.endReason || room?.endReason || "") || "غير محدد";
+
+  const mainWordLabel = res.roundMode === LOL_MODE_KEY ? "الشخصية" : "الكلمة";
+  const mainWordValue = res.roundMode === LOL_MODE_KEY
+    ? (res.lolSkin?.championName || "—")
+    : (res.word || "—");
+
+  const secondaryLabel = res.roundMode === LOL_MODE_KEY ? "السكن" : res.roundMode === CUSTOM_MODE_KEY ? "اسم المود" : "التصنيف";
+  const secondaryValue = res.roundMode === LOL_MODE_KEY
+    ? (res.lolSkin?.skinName || "—")
+    : (res.categoryLabel || res.customTitle || "—");
+>>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
 
   const questionEvents = getQuestionEvents().slice().reverse();
   const questionCounts = new Map();
@@ -1900,16 +2208,26 @@ async function handleForcedExit(message) {
   hostSecret = null;
   activities = [];
   currentResults = null;
+<<<<<<< HEAD
+=======
+  roundHistory = [];
+>>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
   uidToName = new Map();
   myPrivateData = null;
   playCardVisible = false;
   wasMemberSeen = false;
   resolvingVote = false;
+<<<<<<< HEAD
+=======
+  autoEndingRound = false;
+>>>>>>> 4d6e420 (Add host transfer, custom mode, round history, and connection status)
   actionLocks.clear();
   clearPlayNotice();
 
   clearLast();
   applyLeaveButtonState();
+  renderRoundHistory();
+  setConnectionState(navigator.onLine ? "online" : "offline");
   setText(el.homeError, msg);
   showScreen("home");
 }

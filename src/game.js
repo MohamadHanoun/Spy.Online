@@ -12,6 +12,14 @@ export function buildPool(categoryKeys) {
   return items;
 }
 
+export function buildCustomPool(words, categoryLabel = "مود خاص") {
+  const list = Array.isArray(words) ? words : [];
+  return list
+    .map((word) => String(word || "").trim())
+    .filter(Boolean)
+    .map((word) => ({ word, categoryLabel }));
+}
+
 export function pickWordAvoidingRecent(pool, max = 15) {
   const recent = loadRecentWords().slice(0, max);
   const candidates = pool.filter((x) => !recent.includes(x.word));
