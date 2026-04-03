@@ -595,20 +595,61 @@ function isActionLocked(key) {
   return true;
 }
 
-function hashString(value) {
-  const str = String(value || "");
-  let hash = 0;
-  for (let i = 0; i < str.length; i += 1) {
-    hash = ((hash << 5) - hash) + str.charCodeAt(i);
-    hash |= 0;
-  }
-  return Math.abs(hash);
-}
+const PLAYER_COLOR_PALETTE = [
+  "#3b82f6", // blue
+  "#ef4444", // red
+  "#22c55e", // green
+  "#f59e0b", // amber
+  "#a855f7", // purple
+  "#06b6d4", // cyan
+  "#ec4899", // pink
+  "#84cc16", // lime
+  "#f97316", // orange
+  "#14b8a6", // teal
+  "#eab308", // yellow
+  "#8b5cf6", // violet
+  "#10b981", // emerald
+  "#f43f5e", // rose
+  "#0ea5e9", // sky
+  "#d946ef", // fuchsia
+  "#65a30d", // olive-lime
+  "#fb7185", // soft rose
+  "#38bdf8", // light blue
+  "#facc15", // bright yellow
+  "#2dd4bf", // aqua
+  "#c084fc", // light violet
+  "#4ade80", // light green
+  "#fb923c", // light orange
+];
 
 function getPlayerColor(playerUid) {
-  const hue = hashString(playerUid) % 360;
-  return `hsl(${hue} 82% 66%)`;
+  const ordered = [...players].sort((a, b) => {
+    const aJoined = Number(a.joinedAtMs || 0);
+    const bJoined = Number(b.joinedAtMs || 0);
+    if (aJoined !== bJoined) return aJoined - bJoined;
+    return String(a.uid || "").localeCompare(String(b.uid || ""));
+  });
+
+  const index = ordered.findIndex((p) => p.uid === playerUid);
+  if (index === -1) return "#3b82f6";
+
+  if (index < PLAYER_COLOR_PALETTE.length) {
+    return PLAYER_COLOR_PALETTE[index];
+  }
+
+  const extra = index - PLAYER_COLOR_PALETTE.length;
+
+  const hue = Math.round((extra * 137.508 + 17) % 360);
+  const saturationSteps = [82, 74, 90];
+  const lightnessSteps = [58, 64, 52, 68];
+
+  const saturation = saturationSteps[extra % saturationSteps.length];
+  const lightness = lightnessSteps[extra % lightnessSteps.length];
+
+  return `hsl(${hue} ${saturation}% ${lightness}%)`;
 }
+
+
 
 function getPlayerName(playerUid) {
   return uidToName.get(playerUid) || "بدون اسم";
