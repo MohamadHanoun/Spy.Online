@@ -8,6 +8,8 @@ export const SPY_DATA = {
     { key: "lol_champions", label: "شخصيات ليج أوف ليجيند" },
     { key: "video_games", label: "ألعاب فيديو" },
     { key: "RTN", label: " RTN Discord" },
+    { key: "sv", label: " حيوانات sv" },
+
 
   ],
   items: {
@@ -34,7 +36,6 @@ export const SPY_DATA = {
       "مناقيش ","صفيحة","سجق","فتة ",
       "مسبّحة","محمّرة","بابا غنوج","مسقعة","شيش برك","شاكريّة",
       "كباب","كفتة ","سمبوسك","سودة دجاج",
-
     ],
 
     animals: [
@@ -43,7 +44,8 @@ export const SPY_DATA = {
       "دب","أرنب","سنجاب","قنفذ","ماعز","خروف",
       "بقرة","جاموس","دجاجة","ديك","بطة","إوزة",
       "عصفور","حمامة","صقر","بومة","غراب","بطريق",
-      "سمكة","قرش","دلفين","سلحفاة","ضفدع","ثعبان","خشروف","فراشة","نحلة","نملة","تمساح","ضفدع","خفاش","جمل","ثعبان","كنغر","ببغاء"
+      "سمكة","قرش","دلفين","سلحفاة","ضفدع","ثعبان","خشروف",
+      "فراشة","نحلة","نملة","تمساح","ضفدع","خفاش","جمل","ثعبان","كنغر","ببغاء"
     ],
 
     objects: [
@@ -71,6 +73,15 @@ export const SPY_DATA = {
 
     RTN: [
        "Fady","Raphael","Toxic","Torres","aztic","ken","abu 3day","Octane","Killerino","disaster","7Disaster","Taric","Dante","Rnno","Safaa","Nero","Sherko","ziad(july)","Rave","MrDara","Gaith","Ramez","Syrian","Crazy","Noaim","Joker","Musician(المتغزل الحنون)","Hassan","Aram","Tmsah","NorthWind","hyani","Khaled","Moner","Kopra","Raj","bu Rifaat","Abo Nabil","AhmadHm","Al7ara","Wizard","Alqesar","Deathstroke","George","Ghost","Horseman(omar)","Phoneix","Revolution","Kingo","Mosa","Nasar","Choniki","dunno","Semoz"
+    ],
+    sv: [
+      "katt","hund","häst","åsna","kamel","gasell",
+      "varg","räv","lejon","tiger","elefant","giraff",
+      "björn","kanin","ekorre","igelkott","get","får",
+      "ko","buffel","höna","tupp","anka","gås",
+      "fågel","duva","falk","uggla","kråka","pingvin",
+      "fisk","haj","delfin","sköldpadda","groda","orm","lamm",
+      "fjäril","bi","myra","krokodil","groda","fladdermus","kamel","orm","känguru","papegoja"
     ],
   },
 };
